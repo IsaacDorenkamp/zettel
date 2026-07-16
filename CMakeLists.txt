@@ -25,7 +25,7 @@ set(SOURCES
     "src/ident.cpp"
     "src/references.cpp"
     "src/zettel.cpp"
-    "src/katsen.cpp"
+    "src/kasten.cpp"
 
     "src/main.cpp"
 )
