@@ -12,6 +12,7 @@ namespace zettel {
 class ContentBlock {
 public:
     ContentBlock(const Id& id);
+    ContentBlock(const ContentBlock& block);
     virtual ~ContentBlock() = default;
     virtual std::unique_ptr<ContentBlock> clone() const = 0;
     virtual std::vector<std::string> format(FormatOptions options) const = 0;

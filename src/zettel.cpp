@@ -4,11 +4,6 @@ using std::string, std::unique_ptr, std::vector;
 
 namespace zettel {
 
-Reference::Reference(const Id& id) : m_id(id.clone()) {}
-const Id& Reference::id() const {
-    return *m_id;
-}
-
 Zettel::Zettel(const Id& id, const std::string& title) : m_id(id.clone()), m_title(title), m_tags(), m_content(), m_references() {}
 
 const Id& Zettel::id() const {
@@ -40,11 +35,11 @@ void Zettel::addTag(string tag) {
 }
 
 void Zettel::addContentBlock(unique_ptr<ContentBlock>&& block) {
-    m_content.push_back(block);
+    m_content.push_back(std::move(block));
 }
 
 void Zettel::addReference(unique_ptr<Reference>&& reference) {
-    m_references.push_back(reference);
+    m_references.push_back(std::move(reference));
 }
 
 void Zettel::removeTag(string tag) {

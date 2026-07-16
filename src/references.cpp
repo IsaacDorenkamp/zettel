@@ -2,7 +2,7 @@
 
 #include <string>
 
-using std::string, std::vector;
+using std::string, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -24,6 +24,10 @@ vector<string> ZettelReference::format(const FormatOptions& options) const {
         line_size = options.line_size;
     } while (index < source.size());
     return result;
+}
+
+unique_ptr<Reference> ZettelReference::clone() const {
+    return unique_ptr<Reference>(static_cast<Reference*>(new ZettelReference(*m_id, *m_refId)));
 }
 
 }

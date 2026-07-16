@@ -5,6 +5,7 @@ using std::string, std::unique_ptr, std::vector;
 namespace zettel {
 
 ContentBlock::ContentBlock(const Id& id) : m_id(id.clone()) {}
+ContentBlock::ContentBlock(const ContentBlock& block) : ContentBlock(*block.m_id) {}
 const Id& ContentBlock::id() const {
     return *m_id;
 }
