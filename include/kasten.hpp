@@ -27,14 +27,17 @@ public:
 
     void initialize();
     void load();
+    void check() const;
 
     Zettel* createZettel(const std::string& title);
-    Zettel* getZettelById(const Id& id) const;
+    Zettel* getZettelById(const Id& id);
+    const Zettel* getZettelById(const Id& id) const;
 private:
     bool m_loaded;
 
     std::filesystem::path m_root;
     std::map<uint32_t, Zettel> m_zettels;
+    std::unique_ptr<IdGenerator> m_idGenerator;
 };
 
 }

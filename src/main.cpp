@@ -28,13 +28,18 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    zettel::Zettelkasten zk(std::filesystem::current_path());
-
-    if (program.is_subcommand_used("init")) {
-        zk.initialize();
-    } else {
-        string title = new_cmd.get<string>("-t");
-        zk.createZettel(title);
+    try {
+        zettel::Zettelkasten zk(std::filesystem::current_path());
+        if (program.is_subcommand_used("init")) {
+            zk.initialize();
+        } else {
+            zk.load();
+            string title = new_cmd.get<string>("-t");
+            zettel::Zettel* zettel = zk.createZettel(title);
+        }
+    } catch (const zettel::ZettelkastenException& exc) {
+        cerr << "ERROR: " << exc.what() << endl;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

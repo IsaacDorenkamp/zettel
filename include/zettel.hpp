@@ -46,6 +46,8 @@ public:
     bool removeContentBlock(const Id& id);
     bool removeReference(const Id& id);
 
+    void save(std::filesystem::path to);
+
     static Zettel load(std::filesystem::path file);
 private:
     std::unique_ptr<Id> m_id;

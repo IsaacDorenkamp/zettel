@@ -4,7 +4,8 @@
 #include <iomanip>
 #include <sstream>
 
-using std::ostream,
+using std::make_unique,
+      std::ostream,
       std::setfill,
       std::setw,
       std::string,
@@ -54,6 +55,62 @@ void NumericalId::construct_repr() {
     stringstream ss;
     ss << setfill('0') << setw(10) << m_id;
     m_repr = ss.str();
+}
+
+NumericalIdGenerator::NumericalIdGenerator() : m_next(0) {}
+
+unique_ptr<NumericalId> NumericalIdGenerator::typedNext() {
+    return make_unique<NumericalId>(m_next++);
+}
+
+void NumericalIdGenerator::typedConsume(const NumericalId& consumed) {
+    uint32_t wouldBeNext = consumed.id() + 1;
+    if (wouldBeNext > m_next) m_next = wouldBeNext;
+}
+
+NumericalId IdParser<NumericalId>::parse(string source) {
+    if (source.size() > 10) {
+        throw IdException("NumericalId should be no more than 10 characters in length.");
+    }
+    uint32_t id = 0;
+    uint32_t factor = 1;
+    for (string::const_reverse_iterator place = source.crbegin(); place != source.crend(); place++) {
+        switch (*place) {
+        case '0':
+            break;
+        case '1':
+            id += factor;
+            break;
+        case '2':
+            id += 2 * factor;
+            break;
+        case '3':
+            id += 3 * factor;
+            break;
+        case '4':
+            id += 4 * factor;
+            break;
+        case '5':
+            id += 5 * factor;
+            break;
+        case '6':
+            id += 6 * factor;
+            break;
+        case '7':
+            id += 7 * factor;
+            break;
+        case '8':
+            id += 8 * factor;
+            break;
+        case '9':
+            id += 9 * factor;
+            break;
+        default:
+            throw IdException("All characters in NumericalID must be decimal digits.");
+        }
+        factor *= 10;
+    }
+    return NumericalId(id);
 }
 
 }
