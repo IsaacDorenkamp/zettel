@@ -95,8 +95,8 @@ void Zettel::save(std::filesystem::path to) {
         const uint16_t LINE_WIDTH = 150;
         FormatOptions options{
             .mode = DisplayMode::ASCII,
-            .first_line_offset = 0,
-            .line_size = LINE_WIDTH
+            .line_size = LINE_WIDTH,
+            .first_line_offset = 0
         };
         stringstream body;
         uint32_t num_lines = 0;

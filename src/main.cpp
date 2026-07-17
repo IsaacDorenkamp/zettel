@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 
 #include "argparse/argparse.hpp"
@@ -5,6 +6,18 @@
 #include "kasten.hpp"
 
 using namespace std;
+
+std::filesystem::path get_root_path() {
+#ifndef NDEBUG
+    std::filesystem::path tmp_path("/tmp/zettel");
+    if (!std::filesystem::is_directory(tmp_path)) {
+        std::filesystem::create_directory(tmp_path);
+    }
+    return tmp_path;
+#else
+    return std::filesystem::current_path();
+#endif
+}
 
 int main(int argc, char **argv) {
     argparse::ArgumentParser program("zettel");
@@ -29,7 +42,7 @@ int main(int argc, char **argv) {
     }
 
     try {
-        zettel::Zettelkasten zk(std::filesystem::current_path());
+        zettel::Zettelkasten zk(get_root_path());
         if (program.is_subcommand_used("init")) {
             zk.initialize();
         } else {

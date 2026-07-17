@@ -4,7 +4,7 @@
 
 using std::filesystem::path, std::filesystem::is_directory, std::filesystem::filesystem_error,
       std::filesystem::create_directory, std::filesystem::directory_iterator, std::filesystem::directory_entry;
-using std::make_unique, std::string, std::unique_ptr;
+using std::string, std::unique_ptr;
 using std::map, std::pair;
 
 namespace zettel {
@@ -23,6 +23,8 @@ void Zettelkasten::initialize() {
             } catch (const filesystem_error& error) {
                 throw ZettelkastenException("Unable to create workspace directory (.zettel).");
             }
+        } else {
+            throw ZettelkastenException("Workspace directory (.zettel) already exists!");
         }
         m_loaded = true;
     } else {
@@ -46,8 +48,8 @@ void Zettelkasten::load() {
                 // TODO: Warn
             }
         }
+        m_loaded = true;
     }
-    m_loaded = true;
 }
 
 void Zettelkasten::check() const {
