@@ -25,6 +25,10 @@ uint32_t NumericalId::id() const {
     return m_id;
 }
 
+uint32_t NumericalId::hash() const {
+    return m_id;
+}
+
 ostream& NumericalId::write(ostream& stream) const {
     return stream << m_id;
 }

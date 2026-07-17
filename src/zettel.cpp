@@ -1,10 +1,12 @@
 #include "zettel.hpp"
 
+#include "ident.hpp"
 using std::string, std::unique_ptr, std::vector;
 
 namespace zettel {
 
 Zettel::Zettel(const Id& id, const std::string& title) : m_id(id.clone()), m_title(title), m_tags(), m_content(), m_references() {}
+Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.id(), zettel.title()) {}
 
 const Id& Zettel::id() const {
     return *m_id;
@@ -69,6 +71,12 @@ bool Zettel::removeReference(const Id& id) {
         }
     }
     return false;
+}
+
+Zettel Zettel::load(std::filesystem::path path) {
+    // TODO: Implement
+    Zettel result(NumericalId(1), "");
+    return result;
 }
 
 }

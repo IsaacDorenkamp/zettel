@@ -26,11 +26,15 @@ public:
     virtual ~Zettelkasten() = default;
 
     void initialize();
+    void load();
+
     Zettel* createZettel(const std::string& title);
     Zettel* getZettelById(const Id& id) const;
 private:
+    bool m_loaded;
+
     std::filesystem::path m_root;
-    std::map<Id, Zettel> m_zettels;
+    std::map<uint32_t, Zettel> m_zettels;
 };
 
 }
