@@ -26,6 +26,7 @@ set(SOURCES
     "src/references.cpp"
     "src/zettel.cpp"
     "src/kasten.cpp"
+    "src/sys.cpp"
 
     "src/main.cpp"
 )

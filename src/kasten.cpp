@@ -2,9 +2,12 @@
 
 #include <iostream>
 
+#include "content.hpp"
+#include "sys.hpp"
+
 using std::filesystem::path, std::filesystem::is_directory, std::filesystem::filesystem_error,
       std::filesystem::create_directory, std::filesystem::directory_iterator, std::filesystem::directory_entry;
-using std::string, std::unique_ptr;
+using std::make_unique, std::string, std::unique_ptr;
 using std::map, std::pair;
 
 namespace zettel {
@@ -90,6 +93,23 @@ const Zettel* Zettelkasten::getZettelById(const Id& id) const {
         return &entry->second;
     } else {
         return nullptr;
+    }
+}
+
+void Zettelkasten::editZettel(const Id& id) {
+    using std::cout, std::endl;
+    Zettel* zettel = getZettelById(id);
+    path content = m_root / ".zettel" / "NOTE";
+    string command = fmt("%s", content.c_str());
+    char* const argv[] = { const_cast<char*>("-c"), const_cast<char*>(command.c_str()), nullptr };
+    int status = zettel::sys::spawn("/usr/bin/vi", argv, nullptr);
+    path location = m_root / fmt("%s.txt", zettel->id().toString().c_str());
+    // TODO: Allow for more complex structure
+    zettel->addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), "")));
+    try {
+        zettel->save(location);
+    } catch (const ZettelException& exc) {
+        // TODO: Handle error
     }
 }
 

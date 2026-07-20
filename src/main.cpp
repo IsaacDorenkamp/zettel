@@ -30,6 +30,9 @@ int main(int argc, char **argv) {
     new_cmd.add_argument("-t", "--title")
         .help("The title of the new Zettel.")
         .required();
+    new_cmd.add_argument("-e", "--edit")
+        .help("Whether to immediately edit the content of the Zettel.")
+        .flag();
 
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
@@ -49,6 +52,9 @@ int main(int argc, char **argv) {
             zk.load();
             string title = new_cmd.get<string>("-t");
             zettel::Zettel* zettel = zk.createZettel(title);
+            if (new_cmd.get<bool>("-e")) {
+                zk.editZettel(zettel->id());
+            }
         }
     } catch (const zettel::ZettelkastenException& exc) {
         cerr << "ERROR: " << exc.what() << endl;

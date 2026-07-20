@@ -32,6 +32,8 @@ public:
     Zettel* createZettel(const std::string& title);
     Zettel* getZettelById(const Id& id);
     const Zettel* getZettelById(const Id& id) const;
+
+    void editZettel(const Id& id);
 private:
     bool m_loaded;
 
