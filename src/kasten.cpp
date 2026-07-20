@@ -1,8 +1,10 @@
 #include "kasten.hpp"
 
+#include <fstream>
 #include <iostream>
 
 #include "content.hpp"
+#include "io.hpp"
 #include "sys.hpp"
 
 using std::filesystem::path, std::filesystem::is_directory, std::filesystem::filesystem_error,
@@ -104,13 +106,26 @@ void Zettelkasten::editZettel(const Id& id) {
     char* const argv[] = { const_cast<char*>("-c"), const_cast<char*>(command.c_str()), nullptr };
     int status = zettel::sys::spawn("/usr/bin/vi", argv, nullptr);
     path location = m_root / fmt("%s.txt", zettel->id().toString().c_str());
-    // TODO: Allow for more complex structure
-    zettel->addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), "")));
+    std::ifstream contentFile;
+    std::string noteContent;
+    try {
+        contentFile.open(content);
+        noteContent = io::readfile(contentFile);
+    } catch (const std::ifstream::failure& exc) {
+        throw ZettelkastenException("Unable to read content from note file.");
+    }
+    // TODO: Don't use NumericalId(0) as default
+    zettel->clearContent();
+    zettel->addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), noteContent)));
     try {
         zettel->save(location);
     } catch (const ZettelException& exc) {
-        // TODO: Handle error
+        throw ZettelkastenException("Unable to save Zettel.");
     }
+}
+
+unique_ptr<Id> Zettelkasten::parseId(string id) const {
+    return IdParser<NumericalId>::parse(id);
 }
 
 }

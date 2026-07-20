@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "argparse/argparse.hpp"
+#include "ansi.hpp"
 #include "zettel.hpp"
 #include "kasten.hpp"
 
@@ -34,8 +35,22 @@ int main(int argc, char **argv) {
         .help("Whether to immediately edit the content of the Zettel.")
         .flag();
 
+    argparse::ArgumentParser edit_cmd("edit");
+    edit_cmd.add_description("Edit an existing Zettel");
+    edit_cmd.add_argument("id")
+        .help("The ID of the Zettel to edit.")
+        .required();
+
+    argparse::ArgumentParser read_cmd("read");
+    read_cmd.add_description("Read a Zettel.");
+    read_cmd.add_argument("id")
+        .help("The ID of the Zettel to read.")
+        .required();
+
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
+    program.add_subparser(edit_cmd);
+    program.add_subparser(read_cmd);
 
     try {
         program.parse_args(argc, argv);
@@ -48,16 +63,71 @@ int main(int argc, char **argv) {
         zettel::Zettelkasten zk(get_root_path());
         if (program.is_subcommand_used("init")) {
             zk.initialize();
-        } else {
+        } else if (program.is_subcommand_used("new")) {
             zk.load();
             string title = new_cmd.get<string>("-t");
             zettel::Zettel* zettel = zk.createZettel(title);
             if (new_cmd.get<bool>("-e")) {
                 zk.editZettel(zettel->id());
             }
+        } else if (program.is_subcommand_used("edit")) {
+            zk.load();
+            string id = edit_cmd.get<string>("id");
+            unique_ptr<zettel::Id> parsed;
+            try {
+                parsed = zk.parseId(id);
+            } catch (const zettel::IdException& exc) {
+                throw zettel::ZettelkastenException(zettel::fmt("Invalid ID '%s'. %s", id.c_str(), exc.what()));
+            }
+            zk.editZettel(*parsed);
+        } else if (program.is_subcommand_used("read")) {
+            zk.load();
+            string id = read_cmd.get<string>("id");
+            unique_ptr<zettel::Id> parsed;
+            try {
+                parsed = zk.parseId(id);
+            } catch (const zettel::IdException& exc) {
+                throw zettel::ZettelkastenException(zettel::fmt("Invalid ID '%s'. %s", id.c_str(), exc.what()));
+            }
+            const zettel::Zettel* note = zk.getZettelById(*parsed);
+
+            if (!note) {
+                throw zettel::ZettelkastenException(zettel::fmt("No note with ID %s", parsed->toString().c_str()));
+            }
+
+            zettel::FormatOptions options{
+                .mode = zettel::DisplayMode::ANSI,
+                .line_size = 75,
+                .first_line_offset = 0
+            };
+            
+            // print Zettel
+            cout << ansi::block(note->title()).bold(false) << " (" << ansi::block(note->id().toString()).italic(true) << ")" << endl;
+            cout << endl;
+
+            vector<string> lines;
+            for (const unique_ptr<zettel::ContentBlock>& block : note->content()) {
+                lines = block->format(options);
+                if (lines.empty()) continue;
+                bool first = true;
+                for (const string& line : lines) {
+                    if (first) first = false;
+                    else cout << endl;
+                    cout << line;
+                }
+                if (lines.back().size() == options.line_size) {
+                    cout << endl;
+                } else {
+                    options.first_line_offset = options.line_size - lines.back().size();
+                }
+            }
+            cout << endl;
+        } else {
+            cout << program.usage() << endl;
+            return EXIT_FAILURE;
         }
     } catch (const zettel::ZettelkastenException& exc) {
-        cerr << "ERROR: " << exc.what() << endl;
+        cerr << ansi::block("ERROR: ").foreground(ansi::Color::RED).bold(true) << exc.what() << endl;
         return EXIT_FAILURE;
     }
 

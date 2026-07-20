@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+
 #include "ident.hpp"
 
 using std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
@@ -11,7 +12,15 @@ using std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_
 namespace zettel {
 
 Zettel::Zettel(const Id& id, const std::string& title) : m_id(id.clone()), m_title(title), m_tags(), m_content(), m_references() {}
-Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.id(), zettel.title()) {}
+Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.id(), zettel.title()) {
+    m_tags = zettel.m_tags;
+    for (const unique_ptr<ContentBlock>& block : zettel.m_content) {
+        m_content.push_back(block->clone());
+    }
+    for (const unique_ptr<Reference>& ref : zettel.m_references) {
+        m_references.push_back(ref->clone());
+    }
+}
 
 const Id& Zettel::id() const {
     return *m_id;
@@ -41,12 +50,14 @@ void Zettel::addTag(string tag) {
     m_tags.push_back(tag);
 }
 
-void Zettel::addContentBlock(unique_ptr<ContentBlock>&& block) {
+ContentBlock* Zettel::addContentBlock(unique_ptr<ContentBlock>&& block) {
     m_content.push_back(std::move(block));
+    return m_content.back().get();
 }
 
-void Zettel::addReference(unique_ptr<Reference>&& reference) {
+Reference* Zettel::addReference(unique_ptr<Reference>&& reference) {
     m_references.push_back(std::move(reference));
+    return m_references.back().get();
 }
 
 void Zettel::removeTag(string tag) {
@@ -78,6 +89,50 @@ bool Zettel::removeReference(const Id& id) {
     return false;
 }
 
+ContentBlock* Zettel::getContentBlock(const Id& id) {
+    for (unique_ptr<ContentBlock>& ptr : m_content) {
+        if (ptr->id() == id) {
+            return ptr.get();
+        }
+    }
+    return nullptr;
+}
+
+const ContentBlock* Zettel::getContentBlock(const Id& id) const {
+    for (const unique_ptr<ContentBlock>& ptr : m_content) {
+        if (ptr->id() == id) {
+            return ptr.get();
+        }
+    }
+    return nullptr;
+}
+
+Reference* Zettel::getReference(const Id& id) {
+    for (unique_ptr<Reference>& ptr : m_references) {
+        if (ptr->id() == id) {
+            return ptr.get();
+        }
+    }
+    return nullptr;
+}
+
+const Reference* Zettel::getReference(const Id& id) const {
+    for (const unique_ptr<Reference>& ptr : m_references) {
+        if (ptr->id() == id) {
+            return ptr.get();
+        }
+    }
+    return nullptr;
+}
+
+void Zettel::clearContent() {
+    m_content.clear();
+}
+
+void Zettel::clearReferences() {
+    m_references.clear();
+}
+
 void Zettel::save(std::filesystem::path to) {
     ofstream out;
     try {
@@ -92,26 +147,22 @@ void Zettel::save(std::filesystem::path to) {
         out << std::endl;
 
         // TODO: Put this constant somewhere else!
-        const uint16_t LINE_WIDTH = 150;
+        const uint16_t LINE_WIDTH = 75;
         FormatOptions options{
             .mode = DisplayMode::ASCII,
-            .line_size = LINE_WIDTH,
+            .line_size = LINE_WIDTH - 1,
             .first_line_offset = 0
         };
         stringstream body;
-        uint32_t num_lines = 0;
         for (const unique_ptr<ContentBlock>& block : m_content) {
             vector<string> lines = block->format(options);
             if (lines.size() == 0) continue;
-            num_lines += lines.size();
-            if (options.first_line_offset > 0) num_lines--;
             size_t back = lines.back().size();
             first = true;
             for (const string& line : lines) {
-                if (!first) first = true;
+                if (first) first = false;
                 else body << std::endl;
-                body << line;
-                num_lines++;
+                body << "|" << line;
             }
             if (back == LINE_WIDTH) {
                 body << std::endl;
@@ -120,12 +171,6 @@ void Zettel::save(std::filesystem::path to) {
                 options.first_line_offset = back;
             }
         }
-
-        // NOTE: Writing to the FILE, not to "body"!
-        // This is to indicate how many lines the content
-        // of the Zettel occupies before the References
-        // sections begin.
-        out << num_lines << std::endl;
 
         options.first_line_offset = 0;
         for (const unique_ptr<Reference>& reference : m_references) {
@@ -165,14 +210,42 @@ Zettel Zettel::load(std::filesystem::path path) {
         }
         std::unique_ptr<Id> id;
         try {
-            id = unique_ptr<Id>(static_cast<Id*>(new NumericalId(IdParser<NumericalId>::parse(id_token))));
+            id = IdParser<NumericalId>::parse(id_token);
         } catch (const IdException& exc) {
             throw ZettelException(fmt("Unable to parse Zettel ID '%s': %s", id_token.c_str(), exc.what()));
         }
         std::string title;
+        in.ignore(1, ' ');
         std::getline(in, title);
         Zettel result(*id, title);
-        // TODO: Pull in content and references too!
+        // parse tags
+        string tagline;
+        getline(in, tagline);
+        // no tagline? return the current note.
+        if (in.fail() && in.eof()) {
+            return result;
+        }
+        if (!tagline.empty()) {
+            std::istringstream tagsource(tagline);
+            for (string tag;; getline(tagsource, tag, ' ')) {
+                if (tag.empty()) continue;
+                if (tag.front() != '#') throw ZettelException(fmt("Invalid tag '%s': must start with #", tag.c_str()));
+                tag = tag.substr(1);
+                result.addTag(tag);
+            }
+        }
+        // read content section
+        stringstream content;
+        string line;
+        while (in.peek() == '|') {
+            getline(in, line);
+            line = line.substr(1);  // strip '|'
+            content << line;
+        }
+
+        result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), content.str())));
+
+        // TODO: all remaining lines are references
         return result;
     } catch (const ifstream::failure& exc) {
         throw ZettelException(fmt("Unable to load Zettel from %s", path.c_str()));

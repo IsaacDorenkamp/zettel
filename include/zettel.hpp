@@ -39,12 +39,21 @@ public:
 
     void setTitle(std::string title);
     void addTag(std::string tag);
-    void addContentBlock(std::unique_ptr<ContentBlock>&& block);
-    void addReference(std::unique_ptr<Reference>&& reference);
+    ContentBlock* addContentBlock(std::unique_ptr<ContentBlock>&& block);
+    Reference* addReference(std::unique_ptr<Reference>&& reference);
 
     void removeTag(std::string tag);
     bool removeContentBlock(const Id& id);
     bool removeReference(const Id& id);
+
+    ContentBlock* getContentBlock(const Id& id);
+    const ContentBlock* getContentBlock(const Id& id) const;
+
+    Reference* getReference(const Id& id);
+    const Reference* getReference(const Id& id) const;
+
+    void clearContent();
+    void clearReferences();
 
     void save(std::filesystem::path to);
 

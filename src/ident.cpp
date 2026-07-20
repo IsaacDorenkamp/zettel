@@ -68,7 +68,7 @@ void NumericalIdGenerator::typedConsume(const NumericalId& consumed) {
     if (wouldBeNext > m_next) m_next = wouldBeNext;
 }
 
-NumericalId IdParser<NumericalId>::parse(string source) {
+unique_ptr<NumericalId> IdParser<NumericalId>::parse(string source) {
     if (source.size() > 10) {
         throw IdException("NumericalId should be no more than 10 characters in length.");
     }
@@ -110,7 +110,7 @@ NumericalId IdParser<NumericalId>::parse(string source) {
         }
         factor *= 10;
     }
-    return NumericalId(id);
+    return make_unique<NumericalId>(id);
 }
 
 }

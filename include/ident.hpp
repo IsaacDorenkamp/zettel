@@ -94,7 +94,7 @@ class IdParser;
 template <>
 class IdParser<NumericalId> {
 public:
-    static NumericalId parse(std::string source);
+    static std::unique_ptr<NumericalId> parse(std::string source);
 };
 
 }

@@ -34,6 +34,8 @@ public:
     const Zettel* getZettelById(const Id& id) const;
 
     void editZettel(const Id& id);
+
+    std::unique_ptr<Id> parseId(std::string id) const;
 private:
     bool m_loaded;
 

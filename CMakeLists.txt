@@ -21,8 +21,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(argparse)
 
 set(SOURCES
+    "src/ansi.cpp"
     "src/content.cpp"
     "src/ident.cpp"
+    "src/io.cpp"
     "src/references.cpp"
     "src/zettel.cpp"
     "src/kasten.cpp"
