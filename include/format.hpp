@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cctype>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -27,6 +28,8 @@ std::string fmt( const std::string& format, Args ... args )
     std::snprintf( buf.get(), size, format.c_str(), args ... );
     return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
 }
+
+std::string stripWhitespace(std::string other);
 
 
 }

@@ -64,6 +64,10 @@ void Zettelkasten::check() const {
     }
 }
 
+const path& Zettelkasten::root() const {
+    return m_root;
+}
+
 Zettel* Zettelkasten::createZettel(const string& title) {
     unique_ptr<Id> nextId = m_idGenerator->next();
     pair<map<uint32_t, Zettel>::iterator, bool> result = m_zettels.insert({ nextId->hash(), Zettel(*nextId, title) });
@@ -113,16 +117,17 @@ void Zettelkasten::editZettel(const Id& id) {
 
     // TODO: Manually spawn in the future. The trouble with my first attempt was that the terminal
     // did not completely reset after vim exited, causing an undesirable artifact.
-    int status = system(fmt("/usr/bin/vi %s -n", content.c_str()).c_str());
+    int status = system(fmt("/usr/bin/vi -n \"+set noeol\" %s", content.c_str()).c_str());
     path location = m_root / fmt("%s.txt", zettel->id().toString().c_str());
     std::ifstream contentFile;
     std::string noteContent;
     try {
         contentFile.open(content);
-        noteContent = io::readfile(contentFile);
+        noteContent = stripWhitespace(io::readfile(contentFile));
     } catch (const std::ifstream::failure& exc) {
         throw ZettelkastenException("Unable to read content from note file.");
     }
+
     // TODO: Don't use NumericalId(0) as default
     zettel->clearContent();
     zettel->addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), noteContent)));

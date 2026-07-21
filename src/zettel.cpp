@@ -240,7 +240,7 @@ Zettel Zettel::load(std::filesystem::path path) {
         while (in.peek() == '|') {
             getline(in, line);
             line = line.substr(1);  // strip '|'
-            content << line;
+            content << line << std::endl;
         }
 
         result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), content.str())));

@@ -1,6 +1,8 @@
 #include "content.hpp"
 
-using std::string, std::unique_ptr, std::vector;
+#include <sstream>
+
+using std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -16,14 +18,27 @@ unique_ptr<ContentBlock> TextBlock::clone() const {
 }
 vector<string> TextBlock::format(FormatOptions options) const {
     vector<string> result;
-    uint16_t line_size = options.line_size - options.first_line_offset;
-    uint16_t index = 0;
-    do {
-        std::string portion = m_text.substr(index, line_size);
-        result.push_back(portion);
-        index += portion.size();
-        line_size = options.line_size;
-    } while (index < m_text.size());
+    stringstream line;
+    uint16_t lineSize = options.line_size - options.first_line_offset;
+    uint16_t curLineSize = 0;
+    char current;
+    for (size_t index = 0; index < m_text.size(); index++) {
+        current = m_text[index];
+        if (current == '\n') {
+            result.push_back(line.str());
+            line.str("");
+            curLineSize = 0;
+        } else {
+            line << current;
+            curLineSize++;
+            if (curLineSize == lineSize) {
+                result.push_back(line.str());
+                line.str("");
+                curLineSize = 0;
+            }
+        }
+    }
+    result.push_back(line.str());
     return result;
 }
 

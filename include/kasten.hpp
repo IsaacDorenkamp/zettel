@@ -29,6 +29,8 @@ public:
     void load();
     void check() const;
 
+    const std::filesystem::path& root() const;
+
     Zettel* createZettel(const std::string& title);
     Zettel* getZettelById(const Id& id);
     const Zettel* getZettelById(const Id& id) const;

@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-using std::getline, std::string, std::ifstream, std::stringstream;
+using std::string, std::ifstream, std::stringstream;
 
 namespace zettel {
 
@@ -10,12 +10,12 @@ namespace io {
 
 string readfile(ifstream& infile) {
     stringstream content;
-    string line;
+    char buf[1024];
+    int numRead;
     while (!infile.eof()) {
-        getline(infile, line);
-        if (infile.fail()) break;
-        content << line;
-        if (!infile.eof()) content << '\n';
+        infile.read(buf, 1024);
+        numRead = infile.gcount();
+        content.write(buf, numRead);
     }
     return content.str();
 }

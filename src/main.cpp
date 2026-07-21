@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
         zettel::Zettelkasten zk(get_root_path());
         if (program.is_subcommand_used("init")) {
             zk.initialize();
+            cout << ansi::block("Initialized").foreground(ansi::Color::GREEN).bold(true) << " workspace at " << ansi::block(zk.root().string()).italic(true) << endl;
         } else if (program.is_subcommand_used("new")) {
             zk.load();
             string title = new_cmd.get<string>("-t");
@@ -70,6 +71,7 @@ int main(int argc, char **argv) {
             if (new_cmd.get<bool>("-e")) {
                 zk.editZettel(zettel->id());
             }
+            cout << ansi::block("Edited").foreground(ansi::Color::GREEN).bold(true) << " " << ansi::block(zettel->id().toString()).italic(true) << endl;
         } else if (program.is_subcommand_used("edit")) {
             zk.load();
             string id = edit_cmd.get<string>("id");
@@ -102,7 +104,7 @@ int main(int argc, char **argv) {
             };
             
             // print Zettel
-            cout << ansi::block(note->title()).bold(false) << " (" << ansi::block(note->id().toString()).italic(true) << ")" << endl;
+            cout << ansi::block(note->title()).bold(true) << " (" << ansi::block(note->id().toString()).italic(true) << ")" << endl;
             cout << endl;
 
             vector<string> lines;
@@ -121,7 +123,6 @@ int main(int argc, char **argv) {
                     options.first_line_offset = options.line_size - lines.back().size();
                 }
             }
-            cout << endl;
         } else {
             cout << program.usage() << endl;
             return EXIT_FAILURE;
