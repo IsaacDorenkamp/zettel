@@ -1,5 +1,7 @@
 #include "format.hpp"
 
+#include <cctype>
+
 using std::string;
 
 namespace zettel {

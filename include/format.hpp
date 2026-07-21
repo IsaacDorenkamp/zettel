@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cctype>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
