@@ -2,10 +2,10 @@
 
 #include <fstream>
 #include <iostream>
+#include <stdlib.h>
 
 #include "content.hpp"
 #include "io.hpp"
-#include "sys.hpp"
 
 using std::filesystem::path, std::filesystem::is_directory, std::filesystem::filesystem_error,
       std::filesystem::create_directory, std::filesystem::directory_iterator, std::filesystem::directory_entry;
@@ -102,9 +102,18 @@ void Zettelkasten::editZettel(const Id& id) {
     using std::cout, std::endl;
     Zettel* zettel = getZettelById(id);
     path content = m_root / ".zettel" / "NOTE";
-    string command = fmt("%s", content.c_str());
-    char* const argv[] = { const_cast<char*>("-c"), const_cast<char*>(command.c_str()), nullptr };
-    int status = zettel::sys::spawn("/usr/bin/vi", argv, nullptr);
+
+    std::ofstream note;
+    try {
+        note.open(content.c_str(), std::ofstream::trunc);
+        note.close();
+    } catch (const std::ofstream::failure& exc) {
+        throw ZettelkastenException("Unable to truncate note buffer.");
+    }
+
+    // TODO: Manually spawn in the future. The trouble with my first attempt was that the terminal
+    // did not completely reset after vim exited, causing an undesirable artifact.
+    int status = system(fmt("/usr/bin/vi %s -n", content.c_str()).c_str());
     path location = m_root / fmt("%s.txt", zettel->id().toString().c_str());
     std::ifstream contentFile;
     std::string noteContent;
