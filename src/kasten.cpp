@@ -53,8 +53,8 @@ void Zettelkasten::load() {
                 // TODO: Warn
             }
         }
-        m_loaded = true;
     }
+    m_loaded = true;
 }
 
 void Zettelkasten::check() const {

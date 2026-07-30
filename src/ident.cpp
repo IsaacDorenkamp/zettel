@@ -14,6 +14,12 @@ using std::make_unique,
 
 namespace zettel {
 
+ostream& Id::write(ostream& stream) const {
+    Buffer buf = encode();
+    stream.write((const char*)buf.buf(), buf.size());
+    return stream;
+}
+
 ostream& operator<<(ostream& os, const Id& id) {
     return id.write(os);
 }
@@ -30,8 +36,13 @@ uint32_t NumericalId::hash() const {
     return m_id;
 }
 
-ostream& NumericalId::write(ostream& stream) const {
-    return stream << m_id;
+Buffer NumericalId::encode() const {
+    constexpr size_t BUF_SIZE = sizeof(m_id);
+    char* buf = new char[BUF_SIZE];
+    for (uint8_t i = 0; i < BUF_SIZE; i++) {
+        buf[i] = (m_id >> (8 * i)) & 0xff;
+    }
+    return Buffer(buf, BUF_SIZE);
 }
 
 string NumericalId::toString() const {

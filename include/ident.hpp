@@ -5,6 +5,8 @@
 #include <memory>
 #include <string>
 
+#include "buffer.hpp"
+
 namespace zettel {
 
 class IdException : public std::exception {
@@ -21,11 +23,13 @@ class Id {
 public:
     virtual ~Id() = default;
 
-    virtual std::ostream& write(std::ostream& stream) const = 0;
+    virtual Buffer encode() const = 0;
     virtual std::string toString() const = 0;
     virtual bool operator==(const Id& other) const = 0;
     virtual std::unique_ptr<Id> clone() const = 0;
     virtual uint32_t hash() const = 0;
+
+    std::ostream& write(std::ostream& stream) const;
 
     friend std::ostream& operator<<(std::ostream& os, const Id& id);
 };
@@ -37,7 +41,7 @@ public:
     uint32_t id() const;
     uint32_t hash() const;
 
-    virtual std::ostream& write(std::ostream& stream) const;
+    virtual Buffer encode() const;
     virtual std::string toString() const;
     virtual bool operator==(const Id& other) const;
     virtual std::unique_ptr<Id> clone() const;

@@ -22,6 +22,7 @@ FetchContent_MakeAvailable(argparse)
 
 set(SOURCES
     "src/ansi.cpp"
+    "src/buffer.cpp"
     "src/content.cpp"
     "src/format.cpp"
     "src/ident.cpp"
