@@ -20,6 +20,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(argparse)
 
+find_package(SQLite3)
+
 set(SOURCES
     "src/ansi.cpp"
     "src/buffer.cpp"
@@ -30,6 +32,7 @@ set(SOURCES
     "src/references.cpp"
     "src/zettel.cpp"
     "src/kasten.cpp"
+    "src/sql.cpp"
 
     "src/main.cpp"
 )
@@ -41,4 +44,4 @@ if (WIN32)
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
 endif()
-target_link_libraries(zettel argparse)
+target_link_libraries(zettel PRIVATE argparse SQLite3)
