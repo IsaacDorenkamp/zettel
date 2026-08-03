@@ -18,22 +18,25 @@ public:
     class iterator {
     public:
         using RowBuilder = std::function<RowType(const std::vector<sqlite3_value*>&)>;
-        explicit iterator(SQLite* owner, sqlite3_stmt* statement, RowBuilder builder) : m_owner(owner), m_statement(statement), m_columns(sqlite3_column_count(statement)), m_current(), m_builder(builder), m_done(false) {
+        explicit iterator(SQLite* owner, sqlite3_stmt* statement, RowBuilder builder) : m_owner(owner), m_statement(statement), m_columns(sqlite3_column_count(statement)), m_current(), m_builder(builder) {
             m_owner->m_locked = true;
         }
         virtual ~iterator() {
-            m_owner->m_locked = false;
-            sqlite3_finalize(m_statement);
+            if (m_statement) finalize();
         }
         iterator& operator++() {
             int result = sqlite3_step(m_statement);
             switch (result) {
             case SQLITE_DONE:
-                m_done = true;
+                finalize();
+                return *this;
             case SQLITE_OK:
+            case SQLITE_ROW:
                 break;
             default:
-                throw SQLite::Exception("An error occurred fetching the next result.");
+                const char* message = sqlite3_errmsg(m_owner->m_handle);
+                if (message == nullptr) message = "Unknown error";
+                throw SQLite::Exception(fmt("An error occurred fetching the next result: %s", message));
             }
 
             std::vector<sqlite3_value*> row;
@@ -41,24 +44,31 @@ public:
                 row.push_back(sqlite3_column_value(m_statement, index));
             }
             m_current = m_builder(row);
+
             return *this;
         }
         RowType& operator*() {
             return *m_current;
         }
         bool done() const {
-            return m_done;
+            return m_statement == nullptr;
         }
     private:
+        void finalize() {
+            m_owner->m_locked = false;
+            sqlite3_finalize(m_statement);
+            m_current = std::optional<RowType>();
+            m_statement = nullptr;
+        }
+
         SQLite* m_owner;
         sqlite3_stmt* m_statement;
         uint8_t m_columns;
         std::optional<RowType> m_current;
         std::function<RowType(const std::vector<sqlite3_value*>&)> m_builder;
-        bool m_done;
     };
 
-    SQLite(std::filesystem::path file);
+    SQLite(const char* uri);
     virtual ~SQLite();
 
     bool valid() const;
@@ -66,21 +76,25 @@ public:
     
     template <typename RowType>
     iterator<RowType> query(std::string query, typename iterator<RowType>::RowBuilder resultBuilder) {
-        if (m_locked) throw SQLite::Exception("Cannot perform query when locked!");
+        checkState();
 
         sqlite3_stmt* statement;
-        int result = sqlite3_prepare(m_handle, query.c_str(), query.length(), &statement, NULL);
+        int result = sqlite3_prepare(m_handle, query.c_str(), query.size(), &statement, NULL);
         if (result != SQLITE_OK) {
             throw SQLite::Exception(fmt("Failed to compile query: %s", query.c_str()));
         }
         iterator<RowType> it(this, statement, resultBuilder);
-        it++;  // initialize iterator to first result
+        ++it;  // initialize iterator to first result
         return it;
     }
+
+    void query(std::string query);
 private:
     sqlite3* m_handle;
     bool m_valid;
     bool m_locked;
+
+    void checkState();
 };
 
 }
