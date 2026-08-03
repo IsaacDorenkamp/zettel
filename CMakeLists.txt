@@ -21,6 +21,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(argparse)
 
 find_package(SQLite3)
+if(NOT TARGET SQLite3::SQLite3)
+    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
 
 set(SOURCES
     "src/ansi.cpp"
@@ -44,4 +47,4 @@ if (WIN32)
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
 endif()
-target_link_libraries(zettel PRIVATE argparse SQLite3)
+target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3)
