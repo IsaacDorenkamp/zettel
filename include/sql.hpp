@@ -1,6 +1,7 @@
 #pragma once
 
-#include <filesystem>
+#include <functional>
+#include <type_traits>
 #include <vector>
 
 #include <sqlite3.h>
@@ -86,6 +87,14 @@ public:
         iterator<RowType> it(this, statement, resultBuilder);
         ++it;  // initialize iterator to first result
         return it;
+    }
+
+    template <typename RowType, std::enable_if_t<
+        std::is_invocable_r_v<RowType, decltype(RowType::from), const std::vector<sqlite3_value*>&>,
+        bool
+    > = true>
+    iterator<RowType> query(std::string query) {
+        return this->query<RowType>(query, RowType::from);
     }
 
     void query(std::string query);
