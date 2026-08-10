@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
             if (new_cmd.get<bool>("-e")) {
                 zk.editZettel(zettel->id());
             }
-            cout << ansi::block("Edited").foreground(ansi::Color::GREEN).bold(true) << " " << ansi::block(zettel->id().toString()).italic(true) << endl;
+            cout << ansi::block("Edited").foreground(ansi::Color::GREEN).bold(true) << " " << ansi::block(zettel->id().represent()).italic(true) << endl;
         } else if (program.is_subcommand_used("edit")) {
             zk.load();
             string id = edit_cmd.get<string>("id");
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
             const zettel::Zettel* note = zk.getZettelById(*parsed);
 
             if (!note) {
-                throw zettel::ZettelkastenException(zettel::fmt("No note with ID %s", parsed->toString().c_str()));
+                throw zettel::ZettelkastenException(zettel::fmt("No note with ID %s", parsed->represent().c_str()));
             }
 
             zettel::FormatOptions options{
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
             };
             
             // print Zettel
-            cout << ansi::block(note->title()).bold(true) << " (" << ansi::block(note->id().toString()).italic(true) << ")" << endl;
+            cout << ansi::block(note->title()).bold(true) << " (" << ansi::block(note->id().represent()).italic(true) << ")" << endl;
             cout << endl;
 
             vector<string> lines;

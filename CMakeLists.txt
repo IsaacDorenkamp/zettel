@@ -51,7 +51,8 @@ set(SOURCES
 )
 set(TEST_SOURCES
     ${COMMON_SOURCES}
-    "src/test.cpp"
+    "src/test_ident.cpp"
+    "src/test_sql.cpp"
 )
 
 include_directories("include")

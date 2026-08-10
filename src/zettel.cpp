@@ -137,7 +137,7 @@ void Zettel::save(std::filesystem::path to) {
     ofstream out;
     try {
         out.open(to, ofstream::out | ofstream::trunc);
-        out << "[" << m_id->toString() << "] " << m_title << std::endl;
+        out << "[" << m_id->represent() << "] " << m_title << std::endl;
         bool first = true;
         for (const string& tag : m_tags) {
             if (first) first = false;
@@ -210,7 +210,8 @@ Zettel Zettel::load(std::filesystem::path path) {
         }
         std::unique_ptr<Id> id;
         try {
-            id = IdParser<NumericalId>::parse(id_token);
+            // TODO: Don't hardcode numeric ID type!
+            id = Id::parse(id_token, Id::Type::Numeric);
         } catch (const IdException& exc) {
             throw ZettelException(fmt("Unable to parse Zettel ID '%s': %s", id_token.c_str(), exc.what()));
         }
@@ -243,7 +244,7 @@ Zettel Zettel::load(std::filesystem::path path) {
             content << line << std::endl;
         }
 
-        result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), content.str())));
+        result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericId(0), content.str())));
 
         // TODO: all remaining lines are references
         return result;

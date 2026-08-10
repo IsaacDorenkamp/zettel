@@ -16,7 +16,7 @@ vector<string> ZettelReference::format(const FormatOptions& options) const {
     vector<string> result;
     uint16_t line_size = options.line_size - options.first_line_offset;
     uint16_t index = 0;
-    std::string source = m_refId->toString();
+    std::string source = m_refId->represent();
     do {
         std::string portion = source.substr(index, line_size);
         result.push_back(portion);

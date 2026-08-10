@@ -31,7 +31,7 @@ public:
 
     const std::filesystem::path& root() const;
 
-    Zettel* createZettel(const std::string& title);
+    Zettel* createZettel(const std::string& title, const Id& id);
     Zettel* getZettelById(const Id& id);
     const Zettel* getZettelById(const Id& id) const;
 
@@ -43,7 +43,6 @@ private:
 
     std::filesystem::path m_root;
     std::map<uint32_t, Zettel> m_zettels;
-    std::unique_ptr<IdGenerator> m_idGenerator;
 };
 
 }

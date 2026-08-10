@@ -14,7 +14,7 @@ using std::map, std::pair;
 
 namespace zettel {
 
-Zettelkasten::Zettelkasten(path root) : m_loaded(false), m_root(root), m_zettels(), m_idGenerator(static_cast<IdGenerator*>(new NumericalIdGenerator())) {}
+Zettelkasten::Zettelkasten(path root) : m_loaded(false), m_root(root), m_zettels() {}
 
 void Zettelkasten::initialize() {
     if (m_loaded) {
@@ -46,7 +46,6 @@ void Zettelkasten::load() {
         if (entry.is_regular_file() && entry.path().extension() == ".txt") {
             try {
                 Zettel zettel = Zettel::load(entry.path());
-                m_idGenerator->consume(zettel.id());
                 m_zettels.insert({ zettel.id().hash(), zettel });
             } catch (const ZettelException& exception) {
                 std::cerr << exception.what() << std::endl;
@@ -68,15 +67,14 @@ const path& Zettelkasten::root() const {
     return m_root;
 }
 
-Zettel* Zettelkasten::createZettel(const string& title) {
-    unique_ptr<Id> nextId = m_idGenerator->next();
-    pair<map<uint32_t, Zettel>::iterator, bool> result = m_zettels.insert({ nextId->hash(), Zettel(*nextId, title) });
+Zettel* Zettelkasten::createZettel(const string& title, const Id& id) {
+    pair<map<uint32_t, Zettel>::iterator, bool> result = m_zettels.insert({ id.hash(), Zettel(id, title) });
     if (!result.second) {
-        throw ZettelkastenException("Unable to create new Zettel (did the ID generator produce a duplicate?)");
+        throw ZettelkastenException(fmt("Unable to create new Zettel (ID '%s' already exists)", id.represent().c_str()));
     }
     Zettel* zettel = &result.first->second;
     try {
-        zettel->save(m_root / fmt("%s.txt", nextId->toString().c_str()));
+        zettel->save(m_root / fmt("%s.txt", id.represent().c_str()));
     } catch (const ZettelException& exc) {
         m_zettels.erase(result.first);  // if we fail to save the Zettel, remove it from the internal store
         throw ZettelkastenException(fmt("Could not save Zettel: %s", exc.what()));
@@ -118,7 +116,7 @@ void Zettelkasten::editZettel(const Id& id) {
     // TODO: Manually spawn in the future. The trouble with my first attempt was that the terminal
     // did not completely reset after vim exited, causing an undesirable artifact.
     int status = system(fmt("/usr/bin/vi -n \"+set noeol\" %s", content.c_str()).c_str());
-    path location = m_root / fmt("%s.txt", zettel->id().toString().c_str());
+    path location = m_root / fmt("%s.txt", zettel->id().represent().c_str());
     std::ifstream contentFile;
     std::string noteContent;
     try {
@@ -130,7 +128,7 @@ void Zettelkasten::editZettel(const Id& id) {
 
     // TODO: Don't use NumericalId(0) as default
     zettel->clearContent();
-    zettel->addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericalId(0), noteContent)));
+    zettel->addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericId(0), noteContent)));
     try {
         zettel->save(location);
     } catch (const ZettelException& exc) {
@@ -139,7 +137,8 @@ void Zettelkasten::editZettel(const Id& id) {
 }
 
 unique_ptr<Id> Zettelkasten::parseId(string id) const {
-    return IdParser<NumericalId>::parse(id);
+    // TODO: Don't hardcode this to numeric!
+    return Id::parse(id, Id::Type::Numeric);
 }
 
 }
