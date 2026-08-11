@@ -7,12 +7,12 @@
 
 #include "ident.hpp"
 
-using std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
+using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
-Zettel::Zettel(const Id& id, const std::string& title) : m_id(id.clone()), m_title(title), m_tags(), m_content(), m_references() {}
-Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.id(), zettel.title()) {
+Zettel::Zettel(const Id& id, const std::string& title, const path& path) : m_id(id.clone()), m_title(title), m_path(path), m_tags(), m_content(), m_references() {}
+Zettel::Zettel(const Zettel& zettel) : Zettel(*zettel.m_id, zettel.m_title, zettel.m_path) {
     m_tags = zettel.m_tags;
     for (const unique_ptr<ContentBlock>& block : zettel.m_content) {
         m_content.push_back(block->clone());
@@ -133,10 +133,14 @@ void Zettel::clearReferences() {
     m_references.clear();
 }
 
-void Zettel::save(std::filesystem::path to) {
+const path& Zettel::file() const {
+    return m_path;
+}
+
+void Zettel::save() {
     ofstream out;
     try {
-        out.open(to, ofstream::out | ofstream::trunc);
+        out.open(m_path, ofstream::out | ofstream::trunc);
         out << "[" << m_id->represent() << "] " << m_title << std::endl;
         bool first = true;
         for (const string& tag : m_tags) {
@@ -192,7 +196,7 @@ void Zettel::save(std::filesystem::path to) {
     }
 }
 
-Zettel Zettel::load(std::filesystem::path path) {
+Zettel Zettel::load(const std::filesystem::path& path) {
     ifstream in;
     try {
         in.open(path);
@@ -218,7 +222,7 @@ Zettel Zettel::load(std::filesystem::path path) {
         std::string title;
         in.ignore(1, ' ');
         std::getline(in, title);
-        Zettel result(*id, title);
+        Zettel result(*id, title, path);
         // parse tags
         string tagline;
         getline(in, tagline);

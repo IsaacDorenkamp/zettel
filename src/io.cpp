@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-using std::string, std::ifstream, std::stringstream;
+using std::filesystem::path, std::string, std::ifstream, std::stringstream;
 
 namespace zettel {
 
@@ -18,6 +18,12 @@ string readfile(ifstream& infile) {
         content.write(buf, numRead);
     }
     return content.str();
+}
+
+string readfile(const path& file) {
+    ifstream stream;
+    stream.open(file);
+    return readfile(stream);
 }
 
 }

@@ -10,6 +10,7 @@ using std::optional, std::ostream, std::string, std::stringstream;
 namespace ansi {
 
 ANSIBlock::ANSIBlock(string text) : m_text(text), m_flags(0), m_fg(Color::NONE), m_bg(Color::NONE) {}
+ANSIBlock::ANSIBlock() : ANSIBlock("") {}
 
 ANSIBlock& ANSIBlock::bold(bool isBold) {
     m_flags ^= isBold ? ANSIBlock::BOLD : 0;
@@ -91,6 +92,11 @@ bool ANSIBlock::invisible() const {
 
 bool ANSIBlock::strikethrough() const {
     return (m_flags & ANSIBlock::STRIKETHROUGH) != 0;
+}
+
+ANSIBlock& ANSIBlock::setText(string text) {
+    m_text = text;
+    return *this;
 }
 
 string ANSIBlock::toString() const {

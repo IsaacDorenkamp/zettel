@@ -19,6 +19,7 @@ private:
 
 class Id {
 public:
+    using Hash = size_t;
     enum class Type {
         Numeric = 0, Classic = 1
     };
@@ -28,7 +29,7 @@ public:
     Type type() const;
 
     virtual std::unique_ptr<Id> clone() const = 0;
-    virtual size_t hash() const = 0;
+    virtual Hash hash() const = 0;
 
     virtual bool operator<(const Id& other) const = 0;
     virtual bool operator==(const Id& other) const = 0;
@@ -48,13 +49,12 @@ public:
     uint32_t id() const;
 
     virtual std::unique_ptr<Id> clone() const;
-    virtual size_t hash() const;
+    virtual Hash hash() const;
 
     virtual bool operator<(const Id& other) const;
     virtual bool operator==(const Id& other) const;
 private:
     uint32_t m_id;
-    std::string m_repr;
 };
 
 class ClassicId : public Id {
@@ -64,13 +64,12 @@ public:
     const std::vector<uint16_t>& id() const;
 
     virtual std::unique_ptr<Id> clone() const;
-    virtual size_t hash() const;
+    virtual Hash hash() const;
 
     virtual bool operator<(const Id& other) const;
     virtual bool operator==(const Id& other) const;
 private:
     std::vector<uint16_t> m_id;
-    std::string m_repr;
 };
 
 

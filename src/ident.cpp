@@ -101,7 +101,7 @@ ClassicId::ClassicId(vector<uint16_t> id) : Id(Type::Classic), m_id(id) {
         if (isNumericPart) {
             result << item;
         } else {
-            uint16_t item;
+            if (item == 0) result << 'a';
             while (item > 0) {
                 char c = (item % 26) + 97;
                 result << c;

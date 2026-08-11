@@ -5,6 +5,7 @@
 #include "ansi.hpp"
 #include "zettel.hpp"
 #include "kasten.hpp"
+#include "io.hpp"
 
 using namespace std;
 
@@ -33,6 +34,8 @@ int main(int argc, char **argv) {
         .required();
     new_cmd.add_argument("-e", "--edit")
         .help("Whether to immediately edit the content of the Zettel.")
+        .flag();
+    new_cmd.add_argument("--draft")
         .flag();
 
     argparse::ArgumentParser edit_cmd("edit");
@@ -67,11 +70,28 @@ int main(int argc, char **argv) {
         } else if (program.is_subcommand_used("new")) {
             zk.load();
             string title = new_cmd.get<string>("-t");
-            zettel::Zettel* zettel = zk.createZettel(title);
-            if (new_cmd.get<bool>("-e")) {
-                zk.editZettel(zettel->id());
+
+            zettel::Zettel* zettel;
+            bool isDraft = new_cmd.get<bool>("--draft");
+            if (isDraft) {
+                zettel = zk.draftZettel(title);
+            } else {
+                throw zettel::ZettelkastenException("Creating non-draft Zettels is not supported yet.");
             }
-            cout << ansi::block("Edited").foreground(ansi::Color::GREEN).bold(true) << " " << ansi::block(zettel->id().represent()).italic(true) << endl;
+            if (new_cmd.get<bool>("-e")) {
+                filesystem::path contentFile = zk.edit();
+                string content = zettel::io::readfile(contentFile);
+                zettel->clearContent();
+                zettel->addContentBlock(unique_ptr<zettel::ContentBlock>(new zettel::TextBlock(zettel::NumericId(0), content)));
+                zettel->save();
+            }
+            ansi::block block(zettel->id().represent());
+            if (isDraft) {
+                block.setText(zettel::fmt("Draft #%s", zettel->id().represent().c_str())).italic(true);
+            } else {
+                block.setText(zettel->id().represent()).italic(true);
+            }
+            cout << ansi::block("Created").foreground(ansi::Color::GREEN).bold(true) << " " << block << endl;
         } else if (program.is_subcommand_used("edit")) {
             zk.load();
             string id = edit_cmd.get<string>("id");

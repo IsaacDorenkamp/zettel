@@ -26,7 +26,8 @@ class Zettel {
 public:
     Zettel(
         const Id& id,
-        const std::string& title
+        const std::string& title,
+        const std::filesystem::path& path
     );
     Zettel(const Zettel& zettel);
     virtual ~Zettel() = default;
@@ -55,12 +56,15 @@ public:
     void clearContent();
     void clearReferences();
 
-    void save(std::filesystem::path to);
+    const std::filesystem::path& file() const;
 
-    static Zettel load(std::filesystem::path file);
+    void save();
+
+    static Zettel load(const std::filesystem::path& file);
 private:
     std::unique_ptr<Id> m_id;
     std::string m_title;
+    std::filesystem::path m_path;
     std::vector<std::string> m_tags;
     std::vector<std::unique_ptr<ContentBlock>> m_content;
     std::vector<std::unique_ptr<Reference>> m_references;

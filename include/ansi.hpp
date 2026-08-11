@@ -12,6 +12,7 @@ enum class Color {
 class ANSIBlock {
 public:
     ANSIBlock(std::string text);
+    ANSIBlock();
 
     ANSIBlock& bold(bool isBold);
     ANSIBlock& italic(bool isItalic);
@@ -35,6 +36,7 @@ public:
     Color foreground() const;
     Color background() const;
 
+    ANSIBlock& setText(std::string text);
     std::string toString() const;
 
     static unsigned char BOLD;

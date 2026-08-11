@@ -24,9 +24,7 @@ TEST_CASE("Incongruent comparisons defer to type", "[id]") {
 }
 
 TEST_CASE("Representations generate correctly", "[id]") {
-    cout << NumericId(1).represent() << endl;
     REQUIRE(NumericId(1).represent().compare("1") == 0);
     REQUIRE(ClassicId({1}).represent().compare("1") == 0);
-    cout << ClassicId({1, 0, 1}).represent() << endl;
     REQUIRE(ClassicId({1, 0, 1}).represent().compare("1a1") == 0);
 }
