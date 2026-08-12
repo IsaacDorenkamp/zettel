@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 #include "content.hpp"
-#include "io.hpp"
 
 using std::filesystem::path, std::filesystem::is_directory, std::filesystem::filesystem_error,
       std::filesystem::create_directory, std::filesystem::directory_iterator, std::filesystem::directory_entry;

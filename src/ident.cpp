@@ -1,5 +1,6 @@
 #include "ident.hpp"
 
+#include <limits>
 #include <string>
 #include <sstream>
 
@@ -66,6 +67,7 @@ unique_ptr<Id> Id::parse(string id, Type type) {
         ids.push_back(current);
         return unique_ptr<Id>(new ClassicId(ids));
     }
+    return nullptr;
 }
 
 NumericId::NumericId(uint32_t id) : Id(Type::Numeric), m_id(id) {
