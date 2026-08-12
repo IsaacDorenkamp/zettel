@@ -44,6 +44,7 @@ set(COMMON_SOURCES
     "src/zettel.cpp"
     "src/kasten.cpp"
     "src/sql.cpp"
+    "src/parser.cpp"
 )
 set(SOURCES
     ${COMMON_SOURCES}
