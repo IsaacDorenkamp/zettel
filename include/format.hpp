@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace zettel {
 
@@ -29,6 +30,6 @@ std::string fmt( const std::string& format, Args ... args )
 }
 
 std::string stripWhitespace(std::string other);
-
+std::vector<std::string> wrapString(std::string str, const FormatOptions& options);
 
 }
