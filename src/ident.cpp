@@ -27,9 +27,9 @@ unique_ptr<Id> Id::parse(string id, Type type) {
                 throw out_of_range(fmt("%lu exceeds uint32 limit", parsed));
             }
         } catch (const out_of_range& exc) {
-            throw IdException(exc.what());
+            throw Id::Exception(exc.what());
         } catch (const invalid_argument& exc) {
-            throw IdException(exc.what());
+            throw Id::Exception(exc.what());
         }
         return unique_ptr<Id>(new NumericId((uint32_t)parsed));
     case Type::Classic:
@@ -42,16 +42,16 @@ unique_ptr<Id> Id::parse(string id, Type type) {
                     current *= 10;
                     current += c - 48;  // easy way to convert char code to single digit value
                 } else if (c >= 97 && c <= 122) {
-                    if (current == 0) throw IdException(fmt("Expected a digit, got %c instead", c));
+                    if (current == 0) throw Id::Exception(fmt("Expected a digit, got %c instead", c));
                     ids.push_back(current);
                     current = c - 97;  // easy way to convert char code into 0-26
                     isNumericPart = false;
                 } else {
-                    throw IdException(fmt("Character not permitted in classic ID format: '%c'", c));
+                    throw Id::Exception(fmt("Character not permitted in classic ID format: '%c'", c));
                 }
             } else {
                 if (c >= 48 && c <= 57) {
-                    if (current == 0) throw IdException(fmt("Expected a lowercase letter, got %c instead", c));
+                    if (current == 0) throw Id::Exception(fmt("Expected a lowercase letter, got %c instead", c));
                     ids.push_back(current);
                     current = c - 48;
                     isNumericPart = true;
@@ -59,11 +59,11 @@ unique_ptr<Id> Id::parse(string id, Type type) {
                     current *= 26;
                     current += c - 97;
                 } else {
-                    throw IdException(fmt("Character not permitted in classic ID format: '%c'", c));
+                    throw Id::Exception(fmt("Character not permitted in classic ID format: '%c'", c));
                 }
             }
         }
-        if (current == 0) throw IdException("Classic ID cannot be empty or 0!");
+        if (current == 0) throw Id::Exception("Classic ID cannot be empty or 0!");
         ids.push_back(current);
         return unique_ptr<Id>(new ClassicId(ids));
     }

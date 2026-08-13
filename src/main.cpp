@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
             unique_ptr<zettel::Id> parsed;
             try {
                 parsed = zk.parseId(id);
-            } catch (const zettel::IdException& exc) {
+            } catch (const zettel::Id::Exception& exc) {
                 throw zettel::ZettelkastenException(zettel::fmt("Invalid ID '%s'. %s", id.c_str(), exc.what()));
             }
             zk.editZettel(*parsed);
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
             unique_ptr<zettel::Id> parsed;
             try {
                 parsed = zk.parseId(id);
-            } catch (const zettel::IdException& exc) {
+            } catch (const zettel::Id::Exception& exc) {
                 throw zettel::ZettelkastenException(zettel::fmt("Invalid ID '%s'. %s", id.c_str(), exc.what()));
             }
             const zettel::Zettel* note = zk.getZettelById(*parsed);

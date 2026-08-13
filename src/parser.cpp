@@ -40,8 +40,8 @@ DefaultParser::DefaultParser(istream& stream, function<unique_ptr<Id>(string)> i
 unique_ptr<ContentBlock> DefaultParser::next() {
     unique_ptr<ContentBlock> content;
 
-    if (m_bufferIndex == m_bufferSize) m_bufferSize = readBlock();
-    if (m_bufferSize == 0) return nullptr;
+    if (m_bufferIndex == m_bufferSize) loadNextBlock();
+    if (m_done) return nullptr;
 
     char first = m_buffer[m_bufferIndex];
     bool escape = false;
@@ -54,8 +54,8 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             if (c == '[' && !escape) layer++;
             else if (c == ']' && !escape) {
                 layer--;
+                accum << c;
                 if (layer == 0) {
-                    accum << c;
                     return false;
                 }
             } else if (escape) {
@@ -66,6 +66,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             if (!escape) accum << c;
             return true;
         });
+        if (escape) accum << '\\';
 
         if (layer > 0) {
             // we have unclosed stuff, so we'll treat what we have as a text block
@@ -80,8 +81,8 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             if (c == '(' && !escape) layer++;
             else if (c == ')' && !escape) {
                 layer--;
+                accum << c;
                 if (layer == 0) {
-                    accum << c;
                     return false;
                 }
             } else if (escape) {
@@ -92,13 +93,14 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             if (!escape) accum << c;
             return true;
         });
+        if (escape) accum << '\\';
 
         if (layer > 0) {
             return unique_ptr<ContentBlock>(new TextBlock(*nextId(), displayText + accum.str()));
         }
 
         string fullReference = accum.str();
-        string reference = fullReference.substr(1, fullReference.size() - 1);
+        string reference = fullReference.substr(1, fullReference.size() - 2);
 
         size_t delimiter = reference.find(':');
         if (delimiter != string::npos) {
@@ -106,7 +108,12 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             string locator = reference.substr(delimiter + 1);
             unique_ptr<Reference> ref;
             if (kind.compare("zettel") == 0) {
-                unique_ptr<Id> id = m_idParser(locator);
+                unique_ptr<Id> id;
+                try {
+                    id = m_idParser(locator);
+                } catch (const Id::Exception& exc) {
+                    throw Parser::Exception(exc.what());
+                }
                 if (!id) throw Parser::Exception(fmt("Unable to parse Zettel ID '%s'", locator.c_str()));
                 ref = unique_ptr<Reference>(new ZettelReference(*nextId(), *id));
             } else {
@@ -118,8 +125,11 @@ unique_ptr<ContentBlock> DefaultParser::next() {
         }
     } else {
         // go until we find unescaped opening bracket
-        iterateUntil([&accum, &escape](char c) {
-            if (c == '[' && !escape) return false;
+        iterateUntil([this, &accum, &escape](char c) {
+            if (c == '[' && !escape) {
+                m_bufferIndex--;  // back up one character
+                return false;
+            }
             else if (escape) {
                 accum << '\\';
             }
@@ -127,6 +137,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             if (!escape) accum << c;
             return true;
         });
+        if (escape) accum << '\\';  // if the last character is a backslash
         content = unique_ptr<ContentBlock>(new TextBlock(*nextId(), accum.str()));
     }
 
@@ -135,12 +146,6 @@ unique_ptr<ContentBlock> DefaultParser::next() {
 
 unique_ptr<Id> DefaultParser::nextId() {
     return unique_ptr<Id>(new NumericId(m_blockId++));
-}
-
-uint16_t DefaultParser::readBlock() {
-    m_stream->read(m_buffer, 1024);
-    m_bufferIndex = 0;
-    return m_stream->gcount();
 }
 
 }

@@ -1,25 +1,17 @@
 #pragma once
 
+#include "exception.hpp"
 #include <cstdint>
-#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace zettel {
 
-class IdException : public std::exception {
-public:
-    IdException(std::string message) : m_message(message) {}
-    virtual const char* what() const throw() {
-        return m_message.c_str();
-    }
-private:
-    std::string m_message;
-};
-
 class Id {
 public:
+    DEFINE_EXCEPTION;
+
     using Hash = size_t;
     enum class Type {
         Numeric = 0, Classic = 1

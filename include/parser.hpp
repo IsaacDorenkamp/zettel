@@ -28,7 +28,6 @@ protected:
     uint16_t m_bufferIndex;
     char m_buffer[PARSER_BUFFER_SIZE];
     void iterateUntil(std::function<bool(char)>);
-private:
     void loadNextBlock();
 };
 

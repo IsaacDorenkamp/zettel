@@ -216,7 +216,7 @@ Zettel Zettel::load(const std::filesystem::path& path) {
         try {
             // TODO: Don't hardcode numeric ID type!
             id = Id::parse(id_token, Id::Type::Numeric);
-        } catch (const IdException& exc) {
+        } catch (const Id::Exception& exc) {
             throw ZettelException(fmt("Unable to parse Zettel ID '%s': %s", id_token.c_str(), exc.what()));
         }
         std::string title;
