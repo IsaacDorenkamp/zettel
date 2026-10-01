@@ -4,7 +4,19 @@ using std::string;
 
 namespace zettel {
 
-SQLite::SQLite(const char* uri) : m_handle(nullptr), m_valid(true), m_locked(false) {
+namespace sql {
+
+void* salloc(size_t block) {
+    return malloc(block);
+}
+
+void sfree(void* memory) {
+    free(memory);
+}
+
+}
+
+SQLite::SQLite(const char* uri) : m_handle(nullptr), m_in_transaction(false), m_valid(true), m_locked(false) {
     int status = sqlite3_open(uri, &m_handle);
     m_valid = status == SQLITE_OK;
 }
@@ -31,6 +43,52 @@ void SQLite::query(string query) {
     if (result != SQLITE_OK) {
         throw SQLite::Exception(fmt("Error in query %s: %s", query.c_str(), err));
     }
+}
+
+void SQLite::query(string query, const sql::IParamAdapter& params) {
+    checkState();
+    sqlite3_stmt* statement;
+    int result = sqlite3_prepare_v2(m_handle, query.c_str(), query.size(), &statement, NULL);
+    if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query: %s", query.c_str()));
+    result = params.bind(statement);
+    if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to bind parameters to statement: %s", params.error(result)));
+    result = sqlite3_step(statement);
+    while (result != SQLITE_DONE) {
+        if (result == SQLITE_ROW) continue;
+        else {
+            sqlite3_finalize(statement);
+            const char *msg = sqlite3_errmsg(m_handle);
+            throw SQLite::Exception(fmt("Error while executing query: %s", msg));
+        }
+        result = sqlite3_step(statement);
+    }
+    sqlite3_finalize(statement);
+}
+
+void SQLite::begin() {
+    checkState();
+    if (m_in_transaction) throw SQLite::Exception("Already in transaction!");
+    char* msg = nullptr;
+    int result = sqlite3_exec(m_handle, "BEGIN TRANSACTION;", nullptr, nullptr, &msg);
+    if (result != SQLITE_OK) {
+        std::string errmsg(fmt("Could not begin transaction: %s", msg));
+        sqlite3_free(msg);
+        throw SQLite::Exception(errmsg);
+    }
+    m_in_transaction = true;
+}
+
+void SQLite::commit() {
+    checkState();
+    if (!m_in_transaction) throw SQLite::Exception("Not in transaction!");
+    char* msg = nullptr;
+    int result = sqlite3_exec(m_handle, "COMMIT;", nullptr, nullptr, &msg);
+    if (result != SQLITE_OK) {
+        std::string errmsg(fmt("Could not commit transaction: %s", msg));
+        sqlite3_free(msg);
+        throw SQLite::Exception(errmsg);
+    }
+    m_in_transaction = false;
 }
 
 void SQLite::checkState() {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "buffer.hpp"
+#include "exception.hpp"
 #include "ident.hpp"
 #include "sql.hpp"
 #include "zettel.hpp"
@@ -9,34 +9,36 @@ namespace zettel {
 
 namespace models {
 
-struct tag {
+typedef struct tag {
     std::string tag;
     uint32_t id;
 
     static struct tag from(const std::vector<sqlite3_value*>& row);
-};
+} tag;
 
-struct zettel {
-    Buffer note_id;
+typedef struct zettel {
+    std::string note_id;
     std::string title;
     std::string filename;
     uint32_t id;
 
     static struct zettel from(const std::vector<sqlite3_value*>& row);
-};
+} zettel;
 
-struct zettel_tag {
+typedef struct zettel_tag {
     uint32_t tag_id;
     uint32_t zettel_id;
     uint32_t id;
 
     static struct zettel_tag from(const std::vector<sqlite3_value*>& row);
-};
+} zettel_tag;
 
 }
 
 class Index {
 public:
+    DEFINE_EXCEPTION;
+
     Index(const char* db_file);
     virtual ~Index() = default;
 

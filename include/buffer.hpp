@@ -5,10 +5,14 @@
 
 namespace zettel {
 
-class Buffer {
+class buffer {
 public:
-    Buffer(void* buf, size_t size);
-    virtual ~Buffer() = default;
+    buffer(void* buf, size_t size);
+    buffer(const void* buf, size_t size);
+    buffer(buffer&& other) : m_buf(std::move(other.m_buf)), m_size(other.m_size) {
+        other.m_size = 0;
+    }
+    virtual ~buffer() = default;
 
     const void* buf() const;
     void* buf();
