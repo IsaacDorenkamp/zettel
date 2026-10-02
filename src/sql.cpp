@@ -14,8 +14,6 @@ void sfree(void* memory) {
     free(memory);
 }
 
-}
-
 SQLite::SQLite(const char* uri) : m_handle(nullptr), m_in_transaction(false), m_valid(true), m_locked(false) {
     int status = sqlite3_open(uri, &m_handle);
     m_valid = status == SQLITE_OK;
@@ -89,6 +87,8 @@ void SQLite::commit() {
 void SQLite::checkState() {
     if (!m_valid) throw SQLite::Exception("Not in a valid state!");
     if (m_locked) throw SQLite::Exception("Cannot perform query when locked!");
+}
+
 }
 
 }

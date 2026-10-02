@@ -169,7 +169,45 @@ private:
 
 typedef ParamAdapter<std::initializer_list<std::pair<const std::string, value>>> paramdict;
 
-}
+// workaround for static_assert() found at https://artificial-mind.net/blog/2020/10/03/always-false
+template <typename...> constexpr bool dependent_false = false;
+
+template <typename T>
+class ParamAdapter<std::vector<T>> : public IParamAdapter {
+public:
+    ParamAdapter(const std::vector<T>& v) : m_source(&v) {}
+
+    virtual size_t length() const {
+        return m_source->size();
+    }
+
+    virtual int bind(sqlite3_stmt* statement) const {
+        size_t args = sqlite3_bind_parameter_count(statement);
+        if (args != m_source->size()) return -1;
+        int ok;
+        for (int index = 1; index < args; index++) {
+            if constexpr (std::is_same_v<T, std::string>) {
+                std::string arg = (*m_source)[index];
+                void* newbuf = salloc(arg.size());
+                memcpy(newbuf, arg.c_str(), arg.size());
+                return sqlite3_bind_text(statement, index, (const char*)newbuf, arg.size(), &sfree);
+            } else {
+                static_assert(dependent_false<T>, "Unsupported type");
+            }
+        }
+    }
+
+    virtual std::optional<std::string> error(int bindResult) const {
+        if (bindResult > 0) return sqlite3_errstr(bindResult);
+        else if (bindResult == -1) return "Mismatch between query parameters and number of parameters in list";
+        else return std::nullopt;
+    }
+private:
+    const std::vector<T>* m_source;
+};
+
+template <typename T>
+using paramvec = ParamAdapter<std::vector<T>>;
 
 class SQLite {
 public:
@@ -191,6 +229,11 @@ public:
         }
         virtual ~iterator() {
             if (m_statement) finalize();
+        }
+        iterator operator++(int) {
+            RowType value = *m_current;
+            this->operator++();
+            return iterator<RowType>(*value);
         }
         iterator& operator++() {
             int result = sqlite3_step(m_statement);
@@ -225,6 +268,9 @@ public:
             return m_statement == nullptr;
         }
     private:
+        // used strictly for post-increment operator, produces a dummy iterator with nothing but a value
+        iterator(RowType value) : m_owner(nullptr), m_statement(nullptr), m_columns(0), m_current(value), m_builder() {}
+
         void finalize() {
             m_owner->m_locked = false;
             sqlite3_finalize(m_statement);
@@ -294,5 +340,27 @@ private:
 
     void checkState();
 };
+
+
+// helpers for managing result sets
+template <typename RowType>
+std::vector<RowType> gather(SQLite::iterator<RowType>& rset) {
+    std::vector<RowType> result;
+    for (; !rset.done(); ++rset) result.push_back(std::move(*rset));
+    return result;
+}
+
+template <typename RowType>
+RowType one(SQLite::iterator<RowType>& rset) {
+    return *rset++;
+}
+
+template <typename RowType>
+std::optional<RowType> maybeone(SQLite::iterator<RowType>& rset) {
+    if (rset.done()) return std::nullopt;
+    return std::optional<RowType>(std::move(*rset++));
+}
+
+}
 
 }

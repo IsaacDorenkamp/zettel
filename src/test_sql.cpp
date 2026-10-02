@@ -34,61 +34,63 @@ struct TestRow2 {
     }
 };
 
+using namespace zettel;
+
 TEST_CASE("validity checks", "[sql]") {
-    zettel::SQLite db("file:test.db?mode=invalid");
+    sql::SQLite db("file:test.db?mode=invalid");
     REQUIRE(!db.valid());
     bool valid = true;
     try {
         db.query("SELECT 1;");
-    } catch (const zettel::SQLite::Exception& exc) {
+    } catch (const sql::SQLite::Exception& exc) {
         valid = false;
     }
     REQUIRE(!valid);
 }
 
 TEST_CASE("handle query error correctly", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     bool exceptionOccurred = false;
     try {
         db.query("SELECT a, b FROM test;");
-    } catch (const zettel::SQLite::Exception& exc) {
+    } catch (const sql::SQLite::Exception& exc) {
         exceptionOccurred = true;
     }
     REQUIRE(exceptionOccurred);
 }
 
 TEST_CASE("create and query table", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     db.query("CREATE TABLE test (a INT, b TEXT)");
     db.query("INSERT INTO test (a, b) VALUES (1, \"hello\"), (2, \"world\")");
-    zettel::SQLite::iterator<TestRow> it = db.query<TestRow>("SELECT a, b FROM test;");
+    sql::SQLite::iterator<TestRow> it = db.query<TestRow>("SELECT a, b FROM test;");
     uint8_t rows = 0;
     for (; !it.done(); ++it, ++rows);
     REQUIRE(rows == 2);
 }
 
 TEST_CASE("querying table produces correct data", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     db.query("CREATE TABLE test (a INT, b TEXT)");
     db.query("INSERT INTO test (a, b) VALUES (1, \"hello\")");
-    zettel::SQLite::iterator<TestRow> it = db.query<TestRow>("SELECT a, b FROM test;");
+    sql::SQLite::iterator<TestRow> it = db.query<TestRow>("SELECT a, b FROM test;");
     TestRow& current = *it;
     REQUIRE(current.a == 1);
     REQUIRE(current.b.compare("hello") == 0);
 }
 
 TEST_CASE("query with a self-constructing model works", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     db.query("CREATE TABLE test (a INT, b TEXT)");
     db.query("INSERT INTO test (a, b) VALUES (1, \"hello\")");
-    zettel::SQLite::iterator<TestRow> it = db.query<TestRow>("SELECT a, b FROM test;");
+    sql::SQLite::iterator<TestRow> it = db.query<TestRow>("SELECT a, b FROM test;");
     TestRow& current = *it;
     REQUIRE(current.a == 1);
     REQUIRE(current.b.compare("hello") == 0);
 }
 
 TEST_CASE("query with unnamed params", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     db.query("CREATE TABLE test (a INT, b TEXT, c REAL, d BLOB)");
 
     void* blob = malloc(4);
@@ -96,7 +98,7 @@ TEST_CASE("query with unnamed params", "[sql]") {
     zettel::buffer b(blob, 4);
     db.query("INSERT INTO test (a, b, c, d) VALUES (?, ?, ?, ?)", zettel::sql::paramlist{1, "text", 2.0, std::move(b)});
 
-    zettel::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test");
+    sql::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test");
     TestRow2& current = *it;
     REQUIRE(current.a == 1);
     REQUIRE(current.b.compare("text") == 0);
@@ -105,7 +107,7 @@ TEST_CASE("query with unnamed params", "[sql]") {
 }
 
 TEST_CASE("query with named params", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     db.query("CREATE TABLE test (a INT, b TEXT, c REAL, d BLOB)");
 
     void* blob = malloc(4);
@@ -118,7 +120,7 @@ TEST_CASE("query with named params", "[sql]") {
         {"d", b}
     });
 
-    zettel::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test");
+    sql::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test");
     TestRow2& current = *it;
     REQUIRE(current.a == 1);
     REQUIRE(current.b.compare("text") == 0);
@@ -127,38 +129,38 @@ TEST_CASE("query with named params", "[sql]") {
 }
 
 TEST_CASE("error on bad query", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     try {
         db.query("this query is not valid", zettel::sql::paramlist{});
         REQUIRE(false);
-    } catch (const zettel::SQLite::Exception& exc) {
+    } catch (const sql::SQLite::Exception& exc) {
         REQUIRE(strcmp(exc.what(), "Failed to compile query: this query is not valid") == 0);
     }
 }
 
 TEST_CASE("binding errors", "[sql]") {
-    zettel::SQLite db(":memory:");
+    sql::SQLite db(":memory:");
     db.query("CREATE TABLE test (a INT, b TEXT)");
 
     // using unnamed parameters with paramdict should fail
     try {
         db.query("INSERT INTO test (a, b) VALUES (?, ?)", zettel::sql::paramdict{});
         REQUIRE(false);
-    } catch (const zettel::SQLite::Exception& exc) {
+    } catch (const sql::SQLite::Exception& exc) {
         REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Unnamed parameter at index 1") == 0);
     }
 
     try {
         db.query("INSERT INTO test (a, b) VALUES (:a, :b)", zettel::sql::paramdict{});
         REQUIRE(false);
-    } catch (const zettel::SQLite::Exception& exc) {
+    } catch (const sql::SQLite::Exception& exc) {
         REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Missing named parameter at index 1") == 0);
     }
 
     try {
         db.query("INSERT INTO test (a, b) VALUES (?, ?)", zettel::sql::paramlist{});
         REQUIRE(false);
-    } catch (const zettel::SQLite::Exception& exc) {
+    } catch (const sql::SQLite::Exception& exc) {
         REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Mismatch between query parameters and number of parameters in list") == 0);
     }
 }

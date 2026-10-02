@@ -9,25 +9,17 @@ namespace zettel {
 
 namespace models {
 
-typedef struct tag {
-    std::string tag;
-    uint32_t id;
-
-    static struct tag from(const std::vector<sqlite3_value*>& row);
-} tag;
-
 typedef struct zettel {
-    std::string note_id;
+    std::string id;
     std::string title;
     std::string filename;
-    uint32_t id;
 
     static struct zettel from(const std::vector<sqlite3_value*>& row);
 } zettel;
 
 typedef struct zettel_tag {
-    uint32_t tag_id;
-    uint32_t zettel_id;
+    std::string tag;
+    std::string zettel_id;
     uint32_t id;
 
     static struct zettel_tag from(const std::vector<sqlite3_value*>& row);
@@ -46,7 +38,7 @@ public:
     void insert(const Zettel* note);
     void update(const Zettel* note);
 private:
-    SQLite m_db;
+    sql::SQLite m_db;
 };
 
 }

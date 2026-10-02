@@ -1,21 +1,15 @@
 #include "index.hpp"
 
 #include <string>
+#include <sstream>
 
 #include "logging.hpp"
 
-using std::string, std::unique_ptr, std::vector;
+using std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
 namespace models {
-
-struct tag tag::from(const vector<sqlite3_value*>& row) {
-    return {
-        (const char*)sqlite3_value_text(row[0]),
-        (uint32_t)sqlite3_value_int(row[1]),
-    };
-}
 
 struct zettel zettel::from(const vector<sqlite3_value*>& row) {
     int length = sqlite3_value_bytes(row[0]);
@@ -32,14 +26,13 @@ struct zettel zettel::from(const vector<sqlite3_value*>& row) {
         std::move(zettelId),
         std::move(title),
         std::move(filename),
-        (uint32_t)sqlite3_value_int(row[3])
     };
 }
 
 struct zettel_tag zettel_tag::from(const vector<sqlite3_value*>& row) {
     return {
-        (uint32_t)sqlite3_value_int(row[0]),
-        (uint32_t)sqlite3_value_int(row[1]),
+        (const char*)sqlite3_value_text(row[0]),
+        (const char*)sqlite3_value_text(row[1]),
         (uint32_t)sqlite3_value_int(row[2])
     };
 }
@@ -49,19 +42,15 @@ struct zettel_tag zettel_tag::from(const vector<sqlite3_value*>& row) {
 Index::Index(const char* db) : m_db(db) {}
 
 vector<unique_ptr<Id>> Index::search(string tag) {
-    // NOTE: rather than sanitizing or using prepared statements, we will simply force tags to be lowercase letters. This may change in the future.
-    for (char c : tag) {
-        if (c < 97 || c > 122) {
-            throw Index::Exception("tags must only consist of lowercase letters");
-        }
-    }
     vector<unique_ptr<Id>> results;
-    string query(zettel::fmt("SELECT zettel_tag.tag_id, zettel_tag.zettel_id, zettel_tag.id FROM zettel_tag INNER JOIN tag on tag.tag = \"%s\"", tag));
-    SQLite::iterator<models::zettel> rset(m_db.query<models::zettel>(query));
+    sql::SQLite::iterator<models::zettel_tag> rset = m_db.query<models::zettel_tag>(
+        "SELECT zettel_tag.tag, zettel_tag.zettel_id, zettel_tag.id FROM zettel_tag WHERE tag = ?",
+        sql::paramlist{tag}
+    );
     for (; !rset.done(); ++rset) {
         // TODO: Don't default to Numeric, pull the type dynamically.
         try {
-            unique_ptr<Id> id = Id::parse(rset->note_id, Id::Type::Numeric);
+            unique_ptr<Id> id = Id::parse(rset->zettel_id, Id::Type::Numeric);
             results.push_back(id);
         } catch (const Id::Exception& exc) {
             log::warn("Bad Zettel ID encountered: %s", exc.what());
@@ -72,7 +61,28 @@ vector<unique_ptr<Id>> Index::search(string tag) {
 
 void Index::insert(const Zettel* zettel) {
     m_db.begin();
-    // TODO: queries with prepared statements and binding...
+    string zid = zettel->id().represent();
+    m_db.query(
+        "INSERT INTO zettel (id, title, filename) VALUES (?, ?, ?)",
+        sql::paramlist{ zid, zettel->title(), zettel->file().string() }
+    );
+    for (const string& tag : zettel->tags()) m_db.query("INSERT INTO zettel_tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{ tag, zid });
+    m_db.commit();
+}
+
+void Index::update(const Zettel* zettel) {
+    m_db.begin();
+    m_db.query("UPDATE zettel SET title=?", sql::paramlist{ zettel->title() });
+    string zid = zettel->id().represent();
+    stringstream query("DELETE FROM zettel_tag WHERE tag NOT IN (");
+    const vector<string>& tags = zettel->tags();
+    for (int i = 0; i < tags.size(); i++) {
+        m_db.query("INSERT INTO zettel_tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{tags[i], zid});
+        if (i > 0) query << ", ";
+        query << '?';
+    }
+    query << ')';
+    m_db.query(query.str(), sql::paramvec<string>{zettel->tags()});
     m_db.commit();
 }
 
