@@ -1,11 +1,11 @@
 #pragma once
 
+#include <cstring>
 #include <functional>
 #include <initializer_list>
 #include <map>
 #include <optional>
 #include <type_traits>
-#include <typeindex>
 #include <variant>
 #include <vector>
 
@@ -39,7 +39,7 @@ public:
 template <typename T>
 class ParamAdapter;
 
-typedef std::variant<buffer, std::string, double, int, nullptr_t> value;
+typedef std::variant<buffer, std::string, double, int, std::nullptr_t> value;
 
 template <>
 class ParamAdapter<std::initializer_list<value>> : public IParamAdapter {
@@ -72,7 +72,7 @@ public:
                     return sqlite3_bind_double(statement, index, arg);
                 } else if constexpr (std::is_same_v<T, int>) {
                     return sqlite3_bind_int(statement, index, arg);
-                } else if constexpr (std::is_same_v<T, nullptr_t>) {
+                } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
                     return sqlite3_bind_null(statement, index);
                 }
             }, value);
@@ -100,7 +100,7 @@ typedef ParamAdapter<std::initializer_list<value>> paramlist;
 template <>
 class ParamAdapter<std::initializer_list<std::pair<const std::string, value>>> : public IParamAdapter {
 public:
-    ParamAdapter(const std::initializer_list<std::pair<const std::string, value>>& params) : m_names(), m_params(params) {
+    ParamAdapter(std::initializer_list<std::pair<const std::string, value>>& params) : m_names(), m_params(std::move(params)) {
         for (const std::pair<const std::string, value>& pair : params) m_names.push_back(pair.first);
     }
 
@@ -134,7 +134,7 @@ public:
                     return sqlite3_bind_double(statement, index, arg);
                 } else if constexpr (std::is_same_v<T, int>) {
                     return sqlite3_bind_int(statement, index, arg);
-                } else if constexpr (std::is_same_v<T, nullptr_t>) {
+                } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
                     return sqlite3_bind_null(statement, index);
                 }
             }, result->second);

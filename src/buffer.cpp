@@ -1,5 +1,7 @@
 #include "buffer.hpp"
 
+#include <cstring>
+
 namespace zettel {
 
 buffer::buffer(void* buf, size_t size) : m_buf((char*)buf), m_size(size) {}
