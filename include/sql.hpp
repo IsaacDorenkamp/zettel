@@ -36,6 +36,8 @@ public:
     virtual std::optional<std::string> error(int bindResult) const { return nullptr; }
 };
 
+typedef NullParamAdapter nullparams;
+
 template <typename T>
 class ParamAdapter;
 
@@ -84,7 +86,7 @@ public:
 
     virtual std::optional<std::string> error(int bindResult) const {
         if (bindResult == -1) {
-            return "Mismatch between query variables and number of parameters in list";
+            return "Mismatch between query parameters and number of parameters in list";
         } else if (bindResult == SQLITE_OK) {
             return std::nullopt;
         } else {
@@ -100,8 +102,14 @@ typedef ParamAdapter<std::initializer_list<value>> paramlist;
 template <>
 class ParamAdapter<std::initializer_list<std::pair<const std::string, value>>> : public IParamAdapter {
 public:
-    ParamAdapter(std::initializer_list<std::pair<const std::string, value>>& params) : m_names(), m_params(std::move(params)) {
-        for (const std::pair<const std::string, value>& pair : params) m_names.push_back(pair.first);
+    // the way we're checking for masks, we need two bits in the first four bits set
+    static constexpr int UNNAMED_MASK = 0x90000000;
+    static constexpr int MISSING_MASK = 0xC0000000;
+
+    ParamAdapter(const std::initializer_list<std::pair<const std::string, value>>& params) : m_names(), m_params(params) {
+        for (const std::pair<const std::string, value>& pair : params) {
+            m_names.push_back(pair.first);
+        }
     }
 
     virtual size_t length() const {
@@ -110,16 +118,16 @@ public:
 
     virtual int bind(sqlite3_stmt* statement) const {
         size_t args = sqlite3_bind_parameter_count(statement);
-        if (args != m_params.size()) return -1;
-
         int ok;
         const char* paramname = nullptr;
         std::map<std::string, value>::const_iterator result = m_params.end();
         for (int index = 1; index <= args; index++) {
             paramname = sqlite3_bind_parameter_name(statement, index);
-            if (!paramname) return 0x80000000 | index;
+            if (!paramname) return UNNAMED_MASK | index;
+            if (paramname[0] == ':') paramname = &paramname[1];
+            else if (paramname[0] != '@') return UNNAMED_MASK | index;
             result = m_params.find(paramname);
-            if (result == m_params.end()) return 0xC0000000 | index;
+            if (result == m_params.end()) return MISSING_MASK | index;
             ok = std::visit([statement, index](auto&& arg) {
                 using T = std::decay_t<decltype(arg)>;
                 if constexpr (std::is_same_v<T, buffer>) {
@@ -145,13 +153,11 @@ public:
 
     virtual std::optional<std::string> error(int bindResult) const {
         if (bindResult > 0) return sqlite3_errstr(bindResult);
-        else if (bindResult == -1) {
-            return "Mismatch between query variables and number of parameters in list";
-        } else if ((bindResult & 0x80000000) == 0x80000000) {
+        else if ((bindResult & UNNAMED_MASK) == UNNAMED_MASK) {
             // missing param name
-            return fmt("Unnamed parameter at index %d", bindResult ^ 0x80000000);
-        } else if ((bindResult & 0xC0000000) == 0xC0000000) {
-            return fmt("Missing named parameter at index %d", bindResult ^ 0xC0000000);
+            return fmt("Unnamed parameter at index %d", bindResult ^ UNNAMED_MASK);
+        } else if ((bindResult & MISSING_MASK) == MISSING_MASK) {
+            return fmt("Missing named parameter at index %d", bindResult ^ MISSING_MASK);
         } else {
             return std::nullopt;
         }
@@ -161,7 +167,7 @@ private:
     std::map<std::string, value> m_params;
 };
 
-typedef ParamAdapter<std::initializer_list<std::pair<std::string, value>>> paramdict;
+typedef ParamAdapter<std::initializer_list<std::pair<const std::string, value>>> paramdict;
 
 }
 
@@ -247,7 +253,7 @@ public:
         int result = sqlite3_prepare_v2(m_handle, query.c_str(), query.size(), &statement, NULL);
         if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query: %s", query.c_str()));
         result = params.bind(statement);
-        if (result != SQLITE_OK) throw SQLite::Exception(fmt("Unable to bind parameters to statement: %s", params.error(result)));
+        if (result != SQLITE_OK) throw SQLite::Exception(fmt("Unable to bind parameters to statement: %s", params.error(result)->c_str()));
 
         iterator<RowType> it(this, statement, resultBuilder);
         ++it;  // initialize iterator to first result
@@ -256,7 +262,7 @@ public:
 
     template <typename RowType>
     iterator<RowType> query(std::string query, typename iterator<RowType>::RowBuilder resultBuilder) {
-        return this->query<RowType>(query, resultBuilder, sql::NullParamAdapter{});
+        return this->query<RowType>(query, resultBuilder, sql::nullparams{});
     }
 
     template <typename RowType, std::enable_if_t<

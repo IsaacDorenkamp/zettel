@@ -36,22 +36,13 @@ void SQLite::close() {
     }
 }
 
-void SQLite::query(string query) {
-    checkState();
-    char* err = nullptr;
-    int result = sqlite3_exec(m_handle, query.c_str(), nullptr, nullptr, &err);
-    if (result != SQLITE_OK) {
-        throw SQLite::Exception(fmt("Error in query %s: %s", query.c_str(), err));
-    }
-}
-
 void SQLite::query(string query, const sql::IParamAdapter& params) {
     checkState();
     sqlite3_stmt* statement;
     int result = sqlite3_prepare_v2(m_handle, query.c_str(), query.size(), &statement, NULL);
     if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query: %s", query.c_str()));
     result = params.bind(statement);
-    if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to bind parameters to statement: %s", params.error(result)));
+    if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to bind parameters to statement: %s", params.error(result)->c_str()));
     result = sqlite3_step(statement);
     while (result != SQLITE_DONE) {
         if (result == SQLITE_ROW) continue;
@@ -63,6 +54,10 @@ void SQLite::query(string query, const sql::IParamAdapter& params) {
         result = sqlite3_step(statement);
     }
     sqlite3_finalize(statement);
+}
+
+void SQLite::query(string query) {
+    return this->query(query, sql::nullparams{});
 }
 
 void SQLite::begin() {

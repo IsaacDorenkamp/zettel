@@ -96,10 +96,69 @@ TEST_CASE("query with unnamed params", "[sql]") {
     zettel::buffer b(blob, 4);
     db.query("INSERT INTO test (a, b, c, d) VALUES (?, ?, ?, ?)", zettel::sql::paramlist{1, "text", 2.0, std::move(b)});
 
-    zettel::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test;");
+    zettel::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test");
     TestRow2& current = *it;
     REQUIRE(current.a == 1);
     REQUIRE(current.b.compare("text") == 0);
     REQUIRE(current.c == 2.0);
     REQUIRE(strncmp((const char*)current.d.buf(), "blob", current.d.size()) == 0);
+}
+
+TEST_CASE("query with named params", "[sql]") {
+    zettel::SQLite db(":memory:");
+    db.query("CREATE TABLE test (a INT, b TEXT, c REAL, d BLOB)");
+
+    void* blob = malloc(4);
+    memcpy(blob, "blob", 4);
+    zettel::buffer b(blob, 4);
+    db.query("INSERT INTO test (a, b, c, d) VALUES (:a, :b, :c, :d)", zettel::sql::paramdict{
+        {"a", 1},
+        {"b", "text"},
+        {"c", 2.0},
+        {"d", b}
+    });
+
+    zettel::SQLite::iterator<TestRow2> it = db.query<TestRow2>("SELECT a, b, c, d FROM test");
+    TestRow2& current = *it;
+    REQUIRE(current.a == 1);
+    REQUIRE(current.b.compare("text") == 0);
+    REQUIRE(current.c == 2.0);
+    REQUIRE(strncmp((const char*)current.d.buf(), "blob", current.d.size()) == 0);
+}
+
+TEST_CASE("error on bad query", "[sql]") {
+    zettel::SQLite db(":memory:");
+    try {
+        db.query("this query is not valid", zettel::sql::paramlist{});
+        REQUIRE(false);
+    } catch (const zettel::SQLite::Exception& exc) {
+        REQUIRE(strcmp(exc.what(), "Failed to compile query: this query is not valid") == 0);
+    }
+}
+
+TEST_CASE("binding errors", "[sql]") {
+    zettel::SQLite db(":memory:");
+    db.query("CREATE TABLE test (a INT, b TEXT)");
+
+    // using unnamed parameters with paramdict should fail
+    try {
+        db.query("INSERT INTO test (a, b) VALUES (?, ?)", zettel::sql::paramdict{});
+        REQUIRE(false);
+    } catch (const zettel::SQLite::Exception& exc) {
+        REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Unnamed parameter at index 1") == 0);
+    }
+
+    try {
+        db.query("INSERT INTO test (a, b) VALUES (:a, :b)", zettel::sql::paramdict{});
+        REQUIRE(false);
+    } catch (const zettel::SQLite::Exception& exc) {
+        REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Missing named parameter at index 1") == 0);
+    }
+
+    try {
+        db.query("INSERT INTO test (a, b) VALUES (?, ?)", zettel::sql::paramlist{});
+        REQUIRE(false);
+    } catch (const zettel::SQLite::Exception& exc) {
+        REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Mismatch between query parameters and number of parameters in list") == 0);
+    }
 }
