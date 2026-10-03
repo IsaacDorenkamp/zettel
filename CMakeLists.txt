@@ -36,13 +36,14 @@ endif()
 set(COMMON_SOURCES
     "src/ansi.cpp"
     "src/buffer.cpp"
+    "src/commands.cpp"
     "src/content.cpp"
     "src/format.cpp"
     "src/ident.cpp"
     "src/io.cpp"
+    "src/meta.cpp"
     "src/references.cpp"
     "src/zettel.cpp"
-    "src/kasten.cpp"
     "src/sql.cpp"
     "src/parser.cpp"
 )
