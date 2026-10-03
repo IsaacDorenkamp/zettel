@@ -86,12 +86,4 @@ void Index::update(const Zettel* zettel) {
     m_db.commit();
 }
 
-void Index::create() {
-    m_db.begin();
-    m_db.query("CREATE TABLE zettel (id TEXT PRIMARY KEY, title TEXT NOT NULL, filename TEXT NOT NULL);");
-    m_db.query("CREATE TABLE zettel_tag (zettel_id TEXT NOT NULL, tag TEXT NOT NULL, FOREIGN KEY(zettel_id) REFERENCES zettel(id));");
-    m_db.query("CREATE UNIQUE INDEX zid_tag ON zettel_tag(zettel_id, tag);");
-    m_db.commit();
-}
-
 }

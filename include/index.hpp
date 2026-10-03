@@ -37,8 +37,6 @@ public:
     std::vector<std::unique_ptr<Id>> search(std::string tag);
     void insert(const Zettel* note);
     void update(const Zettel* note);
-
-    void create();
 private:
     sql::SQLite m_db;
 };
