@@ -17,6 +17,7 @@ void sfree(void* memory) {
 SQLite::SQLite(const char* uri) : m_handle(nullptr), m_in_transaction(false), m_valid(true), m_locked(false) {
     int status = sqlite3_open(uri, &m_handle);
     m_valid = status == SQLITE_OK;
+    if (m_valid) sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", nullptr, nullptr, nullptr);
 }
 
 SQLite::~SQLite() {

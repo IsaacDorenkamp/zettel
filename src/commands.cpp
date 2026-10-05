@@ -30,10 +30,10 @@ void initialize(const Context& ctx) {
     if (db.valid()) {
         try {
             db.begin();
-            db.query("CREATE TABLE zettel (id TEXT PRIMARY KEY, title TEXT NOT NULL)");
-            db.query("CREATE TABLE tag (zettel_id TEXT NOT NULL, tag TEXT NOT NULL)");
+            db.query("CREATE TABLE zettel (id INTEGER PRIMARY KEY, title TEXT NOT NULL)");
+            db.query("CREATE TABLE tag (zettel_id INTEGER NOT NULL, tag TEXT NOT NULL)");
             db.query("CREATE UNIQUE INDEX zid_tag ON tag(zettel_id, tag)");
-            db.query("CREATE TABLE reference (source TEXT, dest TEXT, FOREIGN KEY(source) REFERENCES zettel(id), FOREIGN KEY(dest) REFERENCES zettel(id))");
+            db.query("CREATE TABLE reference (source INTEGER, dest INTEGER, FOREIGN KEY(source) REFERENCES zettel(id), FOREIGN KEY(dest) REFERENCES zettel(id))");
             db.query("CREATE UNIQUE INDEX source_dest ON reference(source, dest)");
             db.commit();
         } catch (const sql::SQLite::Exception& exc) {
