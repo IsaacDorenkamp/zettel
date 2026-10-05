@@ -4,7 +4,13 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <vector>
+
+// Developer's note: There was originally an additional Id type,
+// ClassicId, which employed a scheme of identity used for physical
+// Zettelkastens. However, I found this system unfitting for a
+// digital tool, and thus removed it. The Id class remains abstract,
+// leaving open the possibility for different identification schemes
+// in the future.
 
 namespace zettel {
 
@@ -14,7 +20,7 @@ public:
 
     using Hash = size_t;
     enum class Type {
-        Numeric = 0, Classic = 1
+        Numeric = 0
     };
     Id(Type type);
     virtual ~Id() = default;
@@ -49,21 +55,5 @@ public:
 private:
     uint32_t m_id;
 };
-
-class ClassicId : public Id {
-public:
-    ClassicId(std::vector<uint16_t> id);
-
-    const std::vector<uint16_t>& id() const;
-
-    virtual std::unique_ptr<Id> clone() const;
-    virtual Hash hash() const;
-
-    virtual bool operator<(const Id& other) const;
-    virtual bool operator==(const Id& other) const;
-private:
-    std::vector<uint16_t> m_id;
-};
-
 
 }
