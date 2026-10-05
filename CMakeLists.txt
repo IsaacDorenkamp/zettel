@@ -40,6 +40,7 @@ set(COMMON_SOURCES
     "src/content.cpp"
     "src/format.cpp"
     "src/io.cpp"
+    "src/index.cpp"
     "src/meta.cpp"
     "src/references.cpp"
     "src/zettel.cpp"

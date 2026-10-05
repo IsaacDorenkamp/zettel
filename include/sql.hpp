@@ -195,6 +195,7 @@ public:
                 static_assert(dependent_false<T>, "Unsupported type");
             }
         }
+        return SQLITE_OK;
     }
 
     virtual std::optional<std::string> error(int bindResult) const {
@@ -316,7 +317,7 @@ public:
         bool
     > = true>
     iterator<RowType> query(std::string query, const sql::IParamAdapter& params) {
-        return this->query(query, RowType::from, params);
+        return this->query<RowType>(query, RowType::from, params);
     }
 
     template <typename RowType, std::enable_if_t<
