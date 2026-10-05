@@ -5,14 +5,12 @@
 #include <sstream>
 #include <string>
 
-#include "ident.hpp"
-
 using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
-Zettel::Zettel(const Id& id, const std::string& title, const path& path) : m_id(id.clone()), m_title(title), m_path(path), m_tags(), m_content(), m_references() {}
-Zettel::Zettel(const Zettel& zettel) : Zettel(*zettel.m_id, zettel.m_title, zettel.m_path) {
+Zettel::Zettel(const Zettel::Id& id, const std::string& title, const path& path) : m_id(id), m_title(title), m_path(path), m_tags(), m_content(), m_references() {}
+Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.m_id, zettel.m_title, zettel.m_path) {
     m_tags = zettel.m_tags;
     for (const unique_ptr<ContentBlock>& block : zettel.m_content) {
         m_content.push_back(block->clone());
@@ -22,8 +20,8 @@ Zettel::Zettel(const Zettel& zettel) : Zettel(*zettel.m_id, zettel.m_title, zett
     }
 }
 
-const Id& Zettel::id() const {
-    return *m_id;
+const Zettel::Id& Zettel::id() const {
+    return m_id;
 }
 const string& Zettel::title() const {
     return m_title;
@@ -141,7 +139,7 @@ void Zettel::save() {
     ofstream out;
     try {
         out.open(m_path, ofstream::out | ofstream::trunc);
-        out << "[" << m_id->represent() << "] " << m_title << std::endl;
+        out << "[" << m_id << "] " << m_title << std::endl;
         bool first = true;
         for (const string& tag : m_tags) {
             if (first) first = false;
@@ -212,17 +210,18 @@ Zettel Zettel::load(const std::filesystem::path& path) {
         } else {
             throw ZettelException("Unable to read Zettel ID.");
         }
-        std::unique_ptr<Id> id;
+        unsigned long parsed;
         try {
-            // TODO: Don't hardcode numeric ID type!
-            id = Id::parse(id_token, Id::Type::Numeric);
-        } catch (const Id::Exception& exc) {
-            throw ZettelException(fmt("Unable to parse Zettel ID '%s': %s", id_token.c_str(), exc.what()));
+            parsed = std::stoul(id_token);
+        } catch(const std::invalid_argument& exc) {
+            throw ZettelException(fmt("Bad ID '%s'", id_token.c_str()));
+        } catch(const std::out_of_range& exc) {
+            throw ZettelException(fmt("ID '%s' out of range!", id_token.c_str()));
         }
         std::string title;
         in.ignore(1, ' ');
         std::getline(in, title);
-        Zettel result(*id, title, path);
+        Zettel result(parsed, title, path);
         // parse tags
         string tagline;
         getline(in, tagline);
@@ -248,7 +247,7 @@ Zettel Zettel::load(const std::filesystem::path& path) {
             content << line << std::endl;
         }
 
-        result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(NumericId(0), content.str())));
+        result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(0, content.str())));
 
         // TODO: all remaining lines are references
         return result;

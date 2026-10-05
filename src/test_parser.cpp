@@ -2,17 +2,14 @@
 
 #include <sstream>
 
-#include "ident.hpp"
 #include "parser.hpp"
 
 using std::function, std::string, std::stringstream, std::unique_ptr;
 using namespace zettel;
 
-static function<unique_ptr<Id>(string)> parseNumerical = [](string s) { return Id::parse(s, Id::Type::Numeric); };
-
 TEST_CASE("DefaultParser - input without references produces single content block", "[parser]") {
     stringstream s("this is some text");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -23,7 +20,7 @@ TEST_CASE("DefaultParser - input without references produces single content bloc
 
 TEST_CASE("DefaultParser - input with zettel reference produces correct blocks", "[parser]") {
     stringstream s("[this is the reference](zettel:1)");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -32,12 +29,12 @@ TEST_CASE("DefaultParser - input with zettel reference produces correct blocks",
     const Reference* ref = &block->reference();
     const ZettelReference* zettelRef = dynamic_cast<const ZettelReference*>(ref);
     REQUIRE(zettelRef != nullptr);
-    REQUIRE(zettelRef->refId() == NumericId(1));
+    REQUIRE(zettelRef->refId() == 1);
 }
 
 TEST_CASE("DefaultParser - incomplete reference treated as text block", "[parser]") {
     stringstream s("[incomplete reference](zettel:");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -48,7 +45,7 @@ TEST_CASE("DefaultParser - incomplete reference treated as text block", "[parser
 
 TEST_CASE("DefaultParser - incomplete reference treated as text block (unclosed brackets)", "[parser]") {
     stringstream s("[incomplete");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -59,7 +56,7 @@ TEST_CASE("DefaultParser - incomplete reference treated as text block (unclosed 
 
 TEST_CASE("DefaultParser - properly handles backslash at end", "[parser]") {
     stringstream s("this is some text\\");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -70,7 +67,7 @@ TEST_CASE("DefaultParser - properly handles backslash at end", "[parser]") {
 
 TEST_CASE("DefaultParser - properly handles backslash at end (when trying to read reference)", "[parser]") {
     stringstream s("[incomplete\\");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -81,7 +78,7 @@ TEST_CASE("DefaultParser - properly handles backslash at end (when trying to rea
 
 TEST_CASE("DefaultParser - properly handles backslash at end (when trying to read reference) - 2", "[parser]") {
     stringstream s("[reference](zettel\\");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     CHECK(parser.done());
@@ -92,7 +89,7 @@ TEST_CASE("DefaultParser - properly handles backslash at end (when trying to rea
 
 TEST_CASE("DefaultParser - input with references and content produces correct blocks", "[parser]") {
     stringstream s("please refer to [this note](zettel:1) for more information.");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     unique_ptr<ContentBlock> result = parser.next();
     REQUIRE(result != nullptr);
     TextBlock* textBlock = dynamic_cast<TextBlock*>(result.get());
@@ -106,7 +103,7 @@ TEST_CASE("DefaultParser - input with references and content produces correct bl
     const Reference* ref = &refBlock->reference();
     const ZettelReference* zettelRef = dynamic_cast<const ZettelReference*>(ref);
     REQUIRE(zettelRef != nullptr);
-    REQUIRE(zettelRef->refId() == NumericId(1));
+    REQUIRE(zettelRef->refId() == 1);
     REQUIRE(!parser.done());
     result = parser.next();
     CHECK(parser.done());
@@ -117,6 +114,6 @@ TEST_CASE("DefaultParser - input with references and content produces correct bl
 
 TEST_CASE("DefaultParser - throws Parser::Exception when Zettel reference has invalid ID", "[parser]") {
     stringstream s("[reference](zettel:blah)");
-    DefaultParser parser(s, parseNumerical);
+    DefaultParser parser(s);
     REQUIRE_THROWS_AS(parser.next(), Parser::Exception);
 }

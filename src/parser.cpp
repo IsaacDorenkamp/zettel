@@ -35,7 +35,7 @@ void Parser::loadNextBlock() {
     m_done = m_bufferSize == 0;
 }
 
-DefaultParser::DefaultParser(istream& stream, function<unique_ptr<Id>(string)> idParser) : Parser(stream), m_blockId(0), m_idParser(idParser) {}
+DefaultParser::DefaultParser(istream& stream) : Parser(stream), m_blockId(0) {}
 
 unique_ptr<ContentBlock> DefaultParser::next() {
     unique_ptr<ContentBlock> content;
@@ -70,7 +70,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
 
         if (layer > 0) {
             // we have unclosed stuff, so we'll treat what we have as a text block
-            return unique_ptr<ContentBlock>(new TextBlock(*nextId(), accum.str()));
+            return unique_ptr<ContentBlock>(new TextBlock(nextId(), accum.str()));
         }
 
         string displayText = accum.str();
@@ -96,7 +96,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
         if (escape) accum << '\\';
 
         if (layer > 0) {
-            return unique_ptr<ContentBlock>(new TextBlock(*nextId(), displayText + accum.str()));
+            return unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + accum.str()));
         }
 
         string fullReference = accum.str();
@@ -108,20 +108,22 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             string locator = reference.substr(delimiter + 1);
             unique_ptr<Reference> ref;
             if (kind.compare("zettel") == 0) {
-                unique_ptr<Id> id;
+                unsigned long parsed;
                 try {
-                    id = m_idParser(locator);
-                } catch (const Id::Exception& exc) {
-                    throw Parser::Exception(exc.what());
+                    parsed = std::stoul(locator);
+                } catch (const std::invalid_argument& exc) {
+                    throw Parser::Exception(fmt("Invalid ID '%s': %s", locator.c_str(), exc.what()));
+                } catch (const std::out_of_range& exc) {
+                    throw Parser::Exception(fmt("ID '%s' out of range!", locator.c_str()));
                 }
-                if (!id) throw Parser::Exception(fmt("Unable to parse Zettel ID '%s'", locator.c_str()));
-                ref = unique_ptr<Reference>(new ZettelReference(*nextId(), *id));
+                if (parsed > 0xFFFFFFFF) throw Parser::Exception(fmt("ID '%s' out of range!", locator.c_str()));
+                ref = unique_ptr<Reference>(new ZettelReference(nextId(), parsed));
             } else {
-                ref = unique_ptr<Reference>(new GenericReference(*nextId(), kind, locator));
+                ref = unique_ptr<Reference>(new GenericReference(nextId(), kind, locator));
             }
-            content = unique_ptr<ContentBlock>(new ReferenceBlock(*nextId(), *ref));
+            content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), *ref));
         } else {
-            content = unique_ptr<ContentBlock>(new TextBlock(*nextId(), displayText + fullReference));
+            content = unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + fullReference));
         }
     } else {
         // go until we find unescaped opening bracket
@@ -138,14 +140,14 @@ unique_ptr<ContentBlock> DefaultParser::next() {
             return true;
         });
         if (escape) accum << '\\';  // if the last character is a backslash
-        content = unique_ptr<ContentBlock>(new TextBlock(*nextId(), accum.str()));
+        content = unique_ptr<ContentBlock>(new TextBlock(nextId(), accum.str()));
     }
 
     return content;
 }
 
-unique_ptr<Id> DefaultParser::nextId() {
-    return unique_ptr<Id>(new NumericId(m_blockId++));
+ContentBlock::Id DefaultParser::nextId() {
+    return m_blockId++;
 }
 
 }

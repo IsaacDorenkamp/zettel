@@ -4,12 +4,13 @@
 #include <vector>
 
 #include "format.hpp"
-#include "ident.hpp"
 
 namespace zettel {
 
 class Reference {
 public:
+    using Id = uint32_t;
+
     Reference(const Id& id);
     virtual ~Reference() = default;
 
@@ -18,7 +19,7 @@ public:
     virtual std::vector<std::string> format(const FormatOptions& options) const = 0;
     virtual std::unique_ptr<Reference> clone() const = 0;
 protected:
-    std::unique_ptr<Id> m_id;
+    Id m_id;
 };
 
 class GenericReference : public Reference {
@@ -48,7 +49,7 @@ public:
     virtual std::vector<std::string> format(const FormatOptions& options) const;
     virtual std::unique_ptr<Reference> clone() const;
 protected:
-    std::unique_ptr<Id> m_refId;
+    Id m_refId;
 };
 
 }

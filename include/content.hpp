@@ -5,13 +5,14 @@
 #include <vector>
 
 #include "format.hpp"
-#include "ident.hpp"
 #include "references.hpp"
 
 namespace zettel {
 
 class ContentBlock {
 public:
+    using Id = uint32_t;
+
     ContentBlock(const Id& id);
     ContentBlock(const ContentBlock& block);
     virtual ~ContentBlock() = default;
@@ -20,7 +21,7 @@ public:
 
     const Id& id() const;
 protected:
-    std::unique_ptr<Id> m_id;
+    Id m_id;
 };
 
 class TextBlock : public ContentBlock {

@@ -6,10 +6,10 @@ using std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
-ContentBlock::ContentBlock(const Id& id) : m_id(id.clone()) {}
-ContentBlock::ContentBlock(const ContentBlock& block) : ContentBlock(*block.m_id) {}
-const Id& ContentBlock::id() const {
-    return *m_id;
+ContentBlock::ContentBlock(const Id& id) : m_id(id) {}
+ContentBlock::ContentBlock(const ContentBlock& block) : ContentBlock(block.m_id) {}
+const ContentBlock::Id& ContentBlock::id() const {
+    return m_id;
 }
 
 TextBlock::TextBlock(const Id& id, string text) : ContentBlock(id), m_text(text) {}
@@ -20,7 +20,7 @@ const string& TextBlock::text() const {
 }
 
 unique_ptr<ContentBlock> TextBlock::clone() const {
-    return unique_ptr<ContentBlock>(static_cast<ContentBlock*>(new TextBlock(*m_id, m_text)));
+    return unique_ptr<ContentBlock>(static_cast<ContentBlock*>(new TextBlock(m_id, m_text)));
 }
 vector<string> TextBlock::format(const FormatOptions& options) const {
     vector<string> result;
@@ -54,7 +54,7 @@ void ReferenceBlock::setReference(unique_ptr<Reference>&& ref) { m_ref = std::mo
 const Reference& ReferenceBlock::reference() const { return *m_ref; }
 
 unique_ptr<ContentBlock> ReferenceBlock::clone() const {
-    return unique_ptr<ContentBlock>(new ReferenceBlock(*m_id, *m_ref));
+    return unique_ptr<ContentBlock>(new ReferenceBlock(m_id, *m_ref));
 }
 vector<string> ReferenceBlock::format(const FormatOptions& options) const {
     return m_ref->format(options);

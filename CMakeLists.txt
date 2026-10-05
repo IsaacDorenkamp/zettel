@@ -39,7 +39,6 @@ set(COMMON_SOURCES
     "src/commands.cpp"
     "src/content.cpp"
     "src/format.cpp"
-    "src/ident.cpp"
     "src/io.cpp"
     "src/meta.cpp"
     "src/references.cpp"
@@ -53,7 +52,6 @@ set(SOURCES
 )
 set(TEST_SOURCES
     ${COMMON_SOURCES}
-    "src/test_ident.cpp"
     "src/test_sql.cpp"
     "src/test_parser.cpp"
 )

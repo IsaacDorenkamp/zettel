@@ -33,15 +33,14 @@ protected:
 
 class DefaultParser : public Parser {
 public:
-    DefaultParser(std::istream& stream, std::function<std::unique_ptr<Id>(std::string)> idParser);
+    DefaultParser(std::istream& stream);
     virtual ~DefaultParser() = default;
 
     virtual std::unique_ptr<ContentBlock> next();
 private:
-    std::function<std::unique_ptr<Id>(std::string)> m_idParser;
     uint32_t m_blockId;
 
-    std::unique_ptr<Id> nextId();
+    ContentBlock::Id nextId();
     uint16_t readBlock();
 };
 

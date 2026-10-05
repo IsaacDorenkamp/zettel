@@ -6,9 +6,9 @@ using std::string, std::unique_ptr, std::vector;
 
 namespace zettel {
 
-Reference::Reference(const Id& id) : m_id(id.clone()) {}
-const Id& Reference::id() const {
-    return *m_id;
+Reference::Reference(const Id& id) : m_id(id) {}
+const Reference::Id& Reference::id() const {
+    return m_id;
 }
 
 GenericReference::GenericReference(const Id& id, string type, string locator) : Reference(id), m_type(type), m_locator(locator) {}
@@ -32,25 +32,25 @@ vector<string> GenericReference::format(const FormatOptions& options) const {
 }
 
 unique_ptr<Reference> GenericReference::clone() const {
-    return unique_ptr<Reference>(new GenericReference(*m_id, m_type, m_locator));
+    return unique_ptr<Reference>(new GenericReference(m_id, m_type, m_locator));
 }
 
-ZettelReference::ZettelReference(const Id& id, const Id& refId) : Reference(id), m_refId(refId.clone()) {}
+ZettelReference::ZettelReference(const Id& id, const Id& refId) : Reference(id), m_refId(refId) {}
 
-const Id& ZettelReference::refId() const {
-    return *m_refId;
+const Reference::Id& ZettelReference::refId() const {
+    return m_refId;
 }
 
 void ZettelReference::setRefId(const Id& refId) {
-    m_refId = refId.clone();
+    m_refId = refId;
 }
 
 vector<string> ZettelReference::format(const FormatOptions& options) const {
-    return wrapString(m_refId->represent(), options);
+    return wrapString(std::to_string(m_refId), options);
 }
 
 unique_ptr<Reference> ZettelReference::clone() const {
-    return unique_ptr<Reference>(static_cast<Reference*>(new ZettelReference(*m_id, *m_refId)));
+    return unique_ptr<Reference>(static_cast<Reference*>(new ZettelReference(m_id, m_refId)));
 }
 
 }
