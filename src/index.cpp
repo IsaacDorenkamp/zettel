@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 
-using std::string, std::stringstream, std::vector;
+using std::optional, std::string, std::stringstream, std::vector;
 
 namespace zettel {
 
@@ -15,13 +15,9 @@ struct zettel zettel::from(const vector<sqlite3_value*>& row) {
     int length = sqlite3_value_bytes(row[1]);
     string title((const char*)sqlite3_value_text(row[1]), length);
 
-    length = sqlite3_value_bytes(row[2]);
-    string filename((const char*)sqlite3_value_text(row[2]), length);
-
     return {
         zettelId,
         std::move(title),
-        std::move(filename),
     };
 }
 
@@ -72,6 +68,14 @@ void Index::update(const Zettel* zettel) {
     query << ')';
     m_db.query(query.str(), sql::paramvec<string>{zettel->tags()});
     m_db.commit();
+}
+
+uint32_t Index::nextId() {
+    sql::SQLite::iterator<models::zettel> lastResult = m_db.query<models::zettel>("SELECT id, title FROM zettel ORDER BY id DESC LIMIT 1");
+    optional<models::zettel> last = sql::maybeone(lastResult);
+    if (last) {
+        return last->id + 1;
+    } else return 0;
 }
 
 }

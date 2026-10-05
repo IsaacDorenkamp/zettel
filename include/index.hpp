@@ -11,7 +11,6 @@ namespace models {
 typedef struct zettel {
     Zettel::Id id;
     std::string title;
-    std::string filename;
 
     static struct zettel from(const std::vector<sqlite3_value*>& row);
 } zettel;
@@ -36,6 +35,8 @@ public:
     std::vector<Zettel::Id> search(std::string tag);
     void insert(const Zettel* note);
     void update(const Zettel* note);
+
+    uint32_t nextId();
 private:
     sql::SQLite m_db;
 };

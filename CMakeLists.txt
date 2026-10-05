@@ -38,6 +38,7 @@ set(COMMON_SOURCES
     "src/buffer.cpp"
     "src/commands.cpp"
     "src/content.cpp"
+    "src/editor.cpp"
     "src/format.cpp"
     "src/io.cpp"
     "src/index.cpp"

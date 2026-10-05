@@ -1,9 +1,13 @@
 #include "commands.hpp"
 
+#include "editor.hpp"
+#include "index.hpp"
 #include "meta.hpp"
 #include "sql.hpp"
 
 #define ZETTEL_VERSION "0.0.1"
+
+using std::string, std::unique_ptr;
 
 namespace zettel {
 
@@ -42,6 +46,19 @@ void initialize(const Context& ctx) {
     } else {
         throw CommandException(fmt("Unable to open SQLite database at %s", dbfile.c_str()));
     }
+}
+
+void cmd_new(const Context& ctx, const NewOptions& opts) {
+    std::string content;
+    if (opts.edit) {
+        unique_ptr<Editor> ed = Editor::getInstance(ctx.root / ".zettel");
+    }
+
+    Index idx(ctx.root.c_str());
+    uint32_t id = idx.nextId();
+    Zettel result(id, opts.title, ctx.root / fmt("%u.txt"));
+    for (const string& tag : opts.tags) result.addTag(tag);
+    result.save();
 }
 
 }
