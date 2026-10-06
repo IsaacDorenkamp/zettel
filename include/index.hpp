@@ -32,6 +32,9 @@ public:
     Index(const char* db_file);
     virtual ~Index() = default;
 
+    void begin();
+    void commit();
+
     std::vector<Zettel::Id> search(std::string tag);
     void insert(const Zettel* note);
     void update(const Zettel* note);

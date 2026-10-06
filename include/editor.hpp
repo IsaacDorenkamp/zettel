@@ -10,6 +10,7 @@ namespace zettel {
 class Editor {
 public:
     Editor(std::filesystem::path dotdir);
+    virtual ~Editor() = default;
     virtual std::optional<std::string> readInput() = 0;
 
     static std::unique_ptr<Editor> getInstance(std::filesystem::path dotdir);
@@ -25,6 +26,7 @@ public:
     TerminalEditor(std::filesystem::path dotdir, std::string executable, const Args& args, const Env& env);
     TerminalEditor(std::filesystem::path dotdir, std::string executable, const Args& args);
     TerminalEditor(std::filesystem::path dotdir, std::string executable);
+    virtual ~TerminalEditor() = default;
 
     virtual std::optional<std::string> readInput();
 private:

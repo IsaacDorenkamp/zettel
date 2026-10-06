@@ -234,7 +234,7 @@ public:
         iterator operator++(int) {
             RowType value = *m_current;
             this->operator++();
-            return iterator<RowType>(*value);
+            return iterator<RowType>(value);
         }
         iterator& operator++() {
             int result = sqlite3_step(m_statement);
@@ -298,7 +298,7 @@ public:
 
         sqlite3_stmt* statement;
         int result = sqlite3_prepare_v2(m_handle, query.c_str(), query.size(), &statement, NULL);
-        if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query: %s", query.c_str()));
+        if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query '%s': %s", query.c_str(), sqlite3_errmsg(m_handle)));
         result = params.bind(statement);
         if (result != SQLITE_OK) throw SQLite::Exception(fmt("Unable to bind parameters to statement: %s", params.error(result)->c_str()));
 

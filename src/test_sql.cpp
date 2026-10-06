@@ -131,10 +131,10 @@ TEST_CASE("query with named params", "[sql]") {
 TEST_CASE("error on bad query", "[sql]") {
     sql::SQLite db(":memory:");
     try {
-        db.query("this query is not valid", zettel::sql::paramlist{});
+        db.query("select * from not_a_table", zettel::sql::paramlist{});
         REQUIRE(false);
     } catch (const sql::SQLite::Exception& exc) {
-        REQUIRE(strcmp(exc.what(), "Failed to compile query: this query is not valid") == 0);
+        REQUIRE(strcmp(exc.what(), "Failed to compile query 'select * from not_a_table': no such table: not_a_table") == 0);
     }
 }
 

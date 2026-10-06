@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <string>
 
 namespace zettel {
@@ -9,7 +10,7 @@ namespace zettel {
 namespace io {
 
 std::string readfile(std::ifstream& infile);
-std::string readfile(const std::filesystem::path& file);
+std::optional<std::string> readfile(const std::filesystem::path& file);
 
 }
 

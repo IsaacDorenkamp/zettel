@@ -1,13 +1,15 @@
 #include "commands.hpp"
 
+#include "content.hpp"
 #include "editor.hpp"
 #include "index.hpp"
 #include "meta.hpp"
 #include "sql.hpp"
 
+#include "zettel.hpp"
 #define ZETTEL_VERSION "0.0.1"
 
-using std::string, std::unique_ptr;
+using std::make_unique, std::optional, std::string, std::unique_ptr;
 
 namespace zettel {
 
@@ -48,17 +50,30 @@ void initialize(const Context& ctx) {
     }
 }
 
-void cmd_new(const Context& ctx, const NewOptions& opts) {
+unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     std::string content;
+    std::filesystem::path dotdir = ctx.root / ".zettel";
     if (opts.edit) {
-        unique_ptr<Editor> ed = Editor::getInstance(ctx.root / ".zettel");
+        unique_ptr<Editor> ed = Editor::getInstance(dotdir);
+        optional<string> input = ed->readInput();
+        if (input) content = *input;
+        else throw CommandException("Unable to read file input.");
     }
 
-    Index idx(ctx.root.c_str());
+    Index idx((dotdir / "struct.db").c_str());
     uint32_t id = idx.nextId();
-    Zettel result(id, opts.title, ctx.root / fmt("%u.txt"));
-    for (const string& tag : opts.tags) result.addTag(tag);
-    result.save();
+    unique_ptr<Zettel> result = make_unique<Zettel>(id, opts.title, ctx.root / fmt("%u.txt", id));
+    result->addContentBlock(make_unique<zettel::TextBlock>(0, content));
+    for (const string& tag : opts.tags) result->addTag(tag);
+    try {
+        idx.begin();
+        idx.insert(result.get());
+        result->save();
+        idx.commit();
+    } catch (const zettel::ZettelException& exc) {
+        throw CommandException(fmt("Error saving Zettel: %s", exc.what()));
+    }
+    return result;
 }
 
 }

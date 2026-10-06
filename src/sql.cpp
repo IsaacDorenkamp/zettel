@@ -39,7 +39,7 @@ void SQLite::query(string query, const sql::IParamAdapter& params) {
     checkState();
     sqlite3_stmt* statement;
     int result = sqlite3_prepare_v2(m_handle, query.c_str(), query.size(), &statement, NULL);
-    if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query: %s", query.c_str()));
+    if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to compile query '%s': %s", query.c_str(), sqlite3_errmsg(m_handle)));
     result = params.bind(statement);
     if (result != SQLITE_OK) throw SQLite::Exception(fmt("Failed to bind parameters to statement: %s", params.error(result)->c_str()));
     result = sqlite3_step(statement);

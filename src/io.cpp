@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-using std::filesystem::path, std::string, std::ifstream, std::stringstream;
+using std::filesystem::path, std::optional, std::string, std::ifstream, std::stringstream;
 
 namespace zettel {
 
@@ -20,10 +20,11 @@ string readfile(ifstream& infile) {
     return content.str();
 }
 
-string readfile(const path& file) {
+optional<string> readfile(const path& file) {
     ifstream stream;
     stream.open(file);
-    return readfile(stream);
+    if (stream.good()) return readfile(stream);
+    else return std::nullopt;
 }
 
 }

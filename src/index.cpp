@@ -33,6 +33,14 @@ struct zettel_tag zettel_tag::from(const vector<sqlite3_value*>& row) {
 
 Index::Index(const char* db) : m_db(db) {}
 
+void Index::begin() {
+    m_db.begin();
+}
+
+void Index::commit() {
+    m_db.commit();
+}
+
 vector<Zettel::Id> Index::search(string tag) {
     vector<Zettel::Id> results;
     sql::SQLite::iterator<models::zettel_tag> rset = m_db.query<models::zettel_tag>(
@@ -46,17 +54,14 @@ vector<Zettel::Id> Index::search(string tag) {
 }
 
 void Index::insert(const Zettel* zettel) {
-    m_db.begin();
     m_db.query(
-        "INSERT INTO zettel (id, title, filename) VALUES (?, ?, ?)",
-        sql::paramlist{ (int)zettel->id(), zettel->title(), zettel->file().string() }
+        "INSERT INTO zettel (id, title) VALUES (?, ?)",
+        sql::paramlist{ (int)zettel->id(), zettel->title() }
     );
     for (const string& tag : zettel->tags()) m_db.query("INSERT INTO zettel_tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{ tag, (int)zettel->id() });
-    m_db.commit();
 }
 
 void Index::update(const Zettel* zettel) {
-    m_db.begin();
     m_db.query("UPDATE zettel SET title=?", sql::paramlist{ zettel->title() });
     stringstream query("DELETE FROM zettel_tag WHERE tag NOT IN (");
     const vector<string>& tags = zettel->tags();
@@ -67,7 +72,6 @@ void Index::update(const Zettel* zettel) {
     }
     query << ')';
     m_db.query(query.str(), sql::paramvec<string>{zettel->tags()});
-    m_db.commit();
 }
 
 uint32_t Index::nextId() {

@@ -2,8 +2,11 @@
 
 #include "exception.hpp"
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include "zettel.hpp"
 
 namespace zettel {
 
@@ -23,7 +26,7 @@ struct NewOptions {
     bool edit;
 };
 
-void cmd_new(const Context& ctx, const NewOptions& options);
+std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
 
 }
 

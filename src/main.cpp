@@ -26,7 +26,17 @@ int main(int argc, char **argv) {
     argparse::ArgumentParser init_cmd("init");
     init_cmd.add_description("Initialize a local Zettelkasten.");
 
+    argparse::ArgumentParser new_cmd("new");
+    new_cmd.add_argument("title");
+    new_cmd.add_argument("--tag", "-t")
+        .default_value<vector<string>>({})
+        .append()
+        .help("A tag which is used to identify the Zettel.");
+    new_cmd.add_argument("--edit").flag();
+    new_cmd.add_description("Create a new Zettel.");
+
     program.add_subparser(init_cmd);
+    program.add_subparser(new_cmd);
 
     cmd::Context ctx{ get_root_path() };
 
@@ -42,6 +52,15 @@ int main(int argc, char **argv) {
             cmd::initialize(ctx);
             cout << ansi::block("Successfully").foreground(ansi::Color::GREEN).bold(true) << " initialized Zettelkasten at "
                 << ansi::block(ctx.root.string()).bold(true).italic(true) << endl;
+        } else if (program.is_subcommand_used("new")) {
+            cmd::NewOptions opts{
+                new_cmd.get<string>("title"),
+                new_cmd.get<vector<string>>("--tag"),
+                new_cmd.get<bool>("--edit")
+            };
+            unique_ptr<Zettel> z = cmd::make_new(ctx, opts);
+            cout << ansi::block("Created").foreground(ansi::Color::GREEN).bold(true) << " Zettel " << ansi::block(fmt("%u", z->id()))
+                << endl;
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {
