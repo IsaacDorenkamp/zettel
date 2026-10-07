@@ -1,7 +1,9 @@
 #include "editor.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "format.hpp"
 #include "io.hpp"
@@ -13,7 +15,7 @@ namespace zettel {
 Editor::Editor(path dotdir) : m_dotdir(dotdir) {}
 unique_ptr<Editor> Editor::getInstance(path dotdir) {
     // TODO: Don't hardcode vi!
-    return unique_ptr<Editor>(new TerminalEditor(dotdir, "/usr/bin/vi"));
+    return unique_ptr<Editor>(new TerminalEditor(dotdir, "/bin/sh", {"-c", "vi -f /tmp/zettel/.zettel/INPUT"}));
 }
 
 TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEditor::Args& args, const TerminalEditor::Env& env) : Editor(dotdir), m_executable(executable), m_args(args), m_env(env) {}
@@ -55,6 +57,7 @@ optional<string> TerminalEditor::readInput() {
         return std::nullopt;
     } else {
         // we are the parent
+
         int status;
         pid_t finished = waitpid(pid, &status, 0);
         if (finished == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0) {

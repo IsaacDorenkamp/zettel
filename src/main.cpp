@@ -4,6 +4,7 @@
 #include "argparse/argparse.hpp"
 #include "ansi.hpp"
 #include "commands.hpp"
+#include "editor.hpp"
 
 using namespace std;
 using namespace zettel;
@@ -35,8 +36,11 @@ int main(int argc, char **argv) {
     new_cmd.add_argument("--edit").flag();
     new_cmd.add_description("Create a new Zettel.");
 
+    argparse::ArgumentParser test_cmd("test");
+
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
+    program.add_subparser(test_cmd);
 
     cmd::Context ctx{ get_root_path() };
 
@@ -61,6 +65,9 @@ int main(int argc, char **argv) {
             unique_ptr<Zettel> z = cmd::make_new(ctx, opts);
             cout << ansi::block("Created").foreground(ansi::Color::GREEN).bold(true) << " Zettel " << ansi::block(fmt("%u", z->id()))
                 << endl;
+        } else if (program.is_subcommand_used("test")) {
+            unique_ptr<Editor> ed = Editor::getInstance(ctx.root / ".zettel");
+            ed->readInput();
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {
