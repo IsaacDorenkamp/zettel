@@ -1,6 +1,7 @@
 #include "editor.hpp"
 
 #include <fstream>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -22,7 +23,7 @@ TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEdi
 TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEditor::Args& args) : TerminalEditor(dotdir, executable, args, {}) {}
 TerminalEditor::TerminalEditor(path dotdir, string executable) : TerminalEditor(dotdir, executable, {}) {}
 
-optional<string> TerminalEditor::readInput() {
+string TerminalEditor::readInput() {
     path toEdit = m_dotdir / "INPUT";
 
     // first, attempt to truncate the file
@@ -68,16 +69,29 @@ optional<string> TerminalEditor::readInput() {
         exit(EXIT_FAILURE);
     } else if (pid == -1) {
         // something went wrong
-        return std::nullopt;
+        throw Editor::Exception("Unable to start editor.");
     } else {
         // we are the parent
-
         int status;
         pid_t finished = waitpid(pid, &status, 0);
-        if (finished == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-            // read file and return contents
-            return io::readfile(toEdit);
-        } else return std::nullopt;
+        if (WIFEXITED(status)) {
+            int actualStatus = WEXITSTATUS(status);
+            if (actualStatus == 0) {
+                optional<string> content = io::readfile(toEdit);
+                if (content) {
+                    return *content;
+                } else {
+                    throw Editor::Exception("Could not read the edited file!");
+                }
+            } else {
+                throw Editor::Exception(fmt("Editor exited with status %d", actualStatus));
+            }
+        } else if (WIFSIGNALED(status)) {
+            // TODO: nice signal names?
+            throw Editor::Exception(fmt("Editor was terminated by a signal: %d", WTERMSIG(status)));
+        } else {
+            throw Editor::Exception("Unable to start editor.");
+        }
     }
 }
 

@@ -55,9 +55,11 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     std::filesystem::path dotdir = ctx.root / ".zettel";
     if (opts.edit) {
         unique_ptr<Editor> ed = Editor::getInstance(dotdir);
-        optional<string> input = ed->readInput();
-        if (input) content = *input;
-        else throw CommandException("Unable to read file input.");
+        try {
+            content = ed->readInput();
+        } catch (const zettel::Editor::Exception& exc) {
+            throw CommandException(exc.what());
+        }
     }
 
     Index idx((dotdir / "struct.db").c_str());

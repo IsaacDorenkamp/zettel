@@ -2,16 +2,18 @@
 
 #include <filesystem>
 #include <map>
-#include <optional>
 #include <string>
+
+#include "exception.hpp"
 
 namespace zettel {
 
 class Editor {
 public:
+    DEFINE_EXCEPTION;
     Editor(std::filesystem::path dotdir);
     virtual ~Editor() = default;
-    virtual std::optional<std::string> readInput() = 0;
+    virtual std::string readInput() = 0;
 
     static std::unique_ptr<Editor> getInstance(std::filesystem::path dotdir);
 protected:
@@ -28,7 +30,7 @@ public:
     TerminalEditor(std::filesystem::path dotdir, std::string executable);
     virtual ~TerminalEditor() = default;
 
-    virtual std::optional<std::string> readInput();
+    virtual std::string readInput();
 private:
     std::string m_executable;
     Args m_args;

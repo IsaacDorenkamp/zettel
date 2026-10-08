@@ -67,7 +67,12 @@ int main(int argc, char **argv) {
                 << endl;
         } else if (program.is_subcommand_used("test")) {
             unique_ptr<Editor> ed = Editor::getInstance(ctx.root / ".zettel");
-            ed->readInput();
+            try {
+                ed->readInput();
+            } catch (const Editor::Exception& exc) {
+                cerr << ansi::block("ERROR: ").foreground(ansi::Color::RED).bold(true) << exc.what() << endl;
+                return EXIT_FAILURE;
+            }
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {
