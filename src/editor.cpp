@@ -15,7 +15,7 @@ namespace zettel {
 Editor::Editor(path dotdir) : m_dotdir(dotdir) {}
 unique_ptr<Editor> Editor::getInstance(path dotdir) {
     // TODO: Don't hardcode vi!
-    return unique_ptr<Editor>(new TerminalEditor(dotdir, "/bin/sh", {"-c", "vi -f /tmp/zettel/.zettel/INPUT"}));
+    return unique_ptr<Editor>(new TerminalEditor(dotdir, "/bin/sh", {"-c", "vi \"$@\"", "<filename>"}));
 }
 
 TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEditor::Args& args, const TerminalEditor::Env& env) : Editor(dotdir), m_executable(executable), m_args(args), m_env(env) {}
@@ -23,6 +23,8 @@ TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEdi
 TerminalEditor::TerminalEditor(path dotdir, string executable) : TerminalEditor(dotdir, executable, {}) {}
 
 optional<string> TerminalEditor::readInput() {
+    extern char **environ;
+
     path toEdit = m_dotdir / "INPUT";
 
     // first, attempt to truncate the file
@@ -33,24 +35,29 @@ optional<string> TerminalEditor::readInput() {
 
     if (pid == 0) {
         // we are the child
-        const char** args = new const char*[m_args.size() + 3];
+        const char** args = new const char*[m_args.size() + 2];
         size_t index;
+        std::string arg;
         args[0] = m_executable.c_str();
         for (index = 0; index < m_args.size(); index++) {
-            args[index + 1] = m_args[index].c_str();
+            arg = m_args[index];
+            if (arg.compare("<filename>") == 0) {
+                args[index + 1] = toEdit.c_str();
+            } else {
+                args[index + 1] = m_args[index].c_str();
+            }
         }
-        args[m_args.size() + 1] = toEdit.c_str();
-        args[m_args.size() + 2] = nullptr;
+        args[m_args.size() + 1] = nullptr;
+        // TODO: populate env from environ, allowing m_env entries to override
         const char** env = new const char*[m_env.size() + 1];
         Env::const_iterator entry = m_env.cbegin();
-        // necessary to hold string values in memory
         vector<string> envs;
         for (index = 0; entry != m_env.cend(); entry++, index++) {
             envs.push_back(fmt("%s=%s", entry->first.c_str(), entry->second.c_str()));
             env[index] = envs[index].c_str();
         }
         env[m_env.size() + 1] = nullptr;
-        execve(m_executable.c_str(), (char* const*)args, (char* const*)env);
+        execv(m_executable.c_str(), (char* const*)args);
         exit(EXIT_FAILURE);
     } else if (pid == -1) {
         // something went wrong
