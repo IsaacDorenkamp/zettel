@@ -1,20 +1,20 @@
 #include "editor.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <unistd.h>
 #include <stdio.h>
 
 #include "format.hpp"
 #include "io.hpp"
 
-using std::filesystem::path, std::ifstream, std::ofstream, std::optional, std::string, std::unique_ptr, std::vector;
+using std::filesystem::path, std::ifstream, std::ofstream, std::map, std::optional, std::string, std::unique_ptr;
+
+extern char **environ;
 
 namespace zettel {
 
 Editor::Editor(path dotdir) : m_dotdir(dotdir) {}
 unique_ptr<Editor> Editor::getInstance(path dotdir) {
-    // TODO: Don't hardcode vi!
     return unique_ptr<Editor>(new TerminalEditor(dotdir, "/bin/sh", {"-c", "vi \"$@\"", "<filename>"}));
 }
 
@@ -23,8 +23,6 @@ TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEdi
 TerminalEditor::TerminalEditor(path dotdir, string executable) : TerminalEditor(dotdir, executable, {}) {}
 
 optional<string> TerminalEditor::readInput() {
-    extern char **environ;
-
     path toEdit = m_dotdir / "INPUT";
 
     // first, attempt to truncate the file
@@ -35,29 +33,38 @@ optional<string> TerminalEditor::readInput() {
 
     if (pid == 0) {
         // we are the child
-        const char** args = new const char*[m_args.size() + 2];
+        char** args = new char*[m_args.size() + 2];
         size_t index;
         std::string arg;
-        args[0] = m_executable.c_str();
+        args[0] = strdup(m_executable.c_str());
         for (index = 0; index < m_args.size(); index++) {
             arg = m_args[index];
             if (arg.compare("<filename>") == 0) {
-                args[index + 1] = toEdit.c_str();
+                args[index + 1] = strdup(toEdit.c_str());
             } else {
-                args[index + 1] = m_args[index].c_str();
+                args[index + 1] = strdup(m_args[index].c_str());
             }
         }
-        args[m_args.size() + 1] = nullptr;
-        // TODO: populate env from environ, allowing m_env entries to override
-        const char** env = new const char*[m_env.size() + 1];
-        Env::const_iterator entry = m_env.cbegin();
-        vector<string> envs;
-        for (index = 0; entry != m_env.cend(); entry++, index++) {
-            envs.push_back(fmt("%s=%s", entry->first.c_str(), entry->second.c_str()));
-            env[index] = envs[index].c_str();
+        args[m_args.size() + 1] = NULL;
+        map<string, string> totalEnv(m_env);
+        size_t nameSize;
+        string name;
+        for (char** environVar = environ; *environVar != NULL; environVar++) {
+            char* eq = strchr(*environVar, '=');
+            if (eq == NULL) continue;
+            nameSize = (size_t)(eq - *environVar);
+            name = string(*environVar, nameSize);
+            totalEnv.insert({ name, eq + 1 });
         }
-        env[m_env.size() + 1] = nullptr;
-        execv(m_executable.c_str(), (char* const*)args);
+        char** env = new char*[totalEnv.size() + 1];
+        Env::const_iterator entry = totalEnv.cbegin();
+        string line;
+        for (index = 0; entry != totalEnv.cend(); entry++, index++) {
+            line = fmt("%s=%s", entry->first.c_str(), entry->second.c_str());
+            env[index] = strdup(line.data());
+        }
+        env[totalEnv.size()] = nullptr;
+        execve(m_executable.c_str(), (char* const*)args, (char* const*)env);
         exit(EXIT_FAILURE);
     } else if (pid == -1) {
         // something went wrong
