@@ -16,7 +16,7 @@ namespace zettel {
 
 Editor::Editor(path dotdir) : m_dotdir(dotdir) {}
 unique_ptr<Editor> Editor::getInstance(path dotdir) {
-    return unique_ptr<Editor>(new TerminalEditor(dotdir, "/bin/sh", {"-c", "vi \"$@\"", "<filename>"}));
+    return unique_ptr<Editor>(new TerminalEditor(dotdir, "/bin/sh", {"-c", "vi \"$@\"", "/bin/sh", "<filename>"}));
 }
 
 TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEditor::Args& args, const TerminalEditor::Env& env) : Editor(dotdir), m_executable(executable), m_args(args), m_env(env) {}
