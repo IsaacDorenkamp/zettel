@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-using std::string, std::stringstream, std::unique_ptr;
+using std::optional, std::string, std::stringstream, std::unique_ptr;
 
 namespace zettel {
 
@@ -46,16 +46,23 @@ string TextBlock::format(const FormatOptions& options) const {
     return result.str();
 }
 
-ReferenceBlock::ReferenceBlock(const Id& id, const Reference& ref) : ContentBlock(id), m_ref(ref.clone()) {}
+ReferenceBlock::ReferenceBlock(const Id& id, const std::string& uri, const optional<string>& text) : ContentBlock(id), m_uri(uri), m_text(text) {}
 
-void ReferenceBlock::setReference(unique_ptr<Reference>&& ref) { m_ref = std::move(ref); }
-const Reference& ReferenceBlock::reference() const { return *m_ref; }
+void ReferenceBlock::setURI(const string& uri) { m_uri = uri; }
+const std::string& ReferenceBlock::uri() const { return m_uri; }
+
+void ReferenceBlock::setText(const optional<string>& text) { m_text = text; }
+const optional<string>& ReferenceBlock::text() const { return m_text; }
 
 unique_ptr<ContentBlock> ReferenceBlock::clone() const {
-    return unique_ptr<ContentBlock>(new ReferenceBlock(m_id, *m_ref));
+    return unique_ptr<ContentBlock>(new ReferenceBlock(m_id, m_uri));
 }
 string ReferenceBlock::format(const FormatOptions& options) const {
-    return m_ref->format(options);
+    if (m_text) {
+        return fmt("[%s](%s)", m_text->c_str(), m_uri.c_str());
+    } else {
+        return fmt("<%s>", m_uri.c_str());
+    }
 }
 
 }

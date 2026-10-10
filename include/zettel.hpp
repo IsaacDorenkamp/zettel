@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "content.hpp"
-#include "references.hpp"
 
 namespace zettel {
 
@@ -36,12 +35,10 @@ public:
     const std::string& title() const;
     const std::vector<std::string>& tags() const;
     const std::vector<std::unique_ptr<ContentBlock>>& content() const;
-    const std::vector<std::unique_ptr<Reference>>& references() const;
 
     void setTitle(std::string title);
     void addTag(std::string tag);
     ContentBlock* addContentBlock(std::unique_ptr<ContentBlock>&& block);
-    Reference* addReference(std::unique_ptr<Reference>&& reference);
 
     void removeTag(std::string tag);
     bool removeContentBlock(const Id& id);
@@ -49,9 +46,6 @@ public:
 
     ContentBlock* getContentBlock(const ContentBlock::Id& id);
     const ContentBlock* getContentBlock(const ContentBlock::Id& id) const;
-
-    Reference* getReference(const Reference::Id& id);
-    const Reference* getReference(const Reference::Id& id) const;
 
     void clearContent();
     void clearReferences();
@@ -67,7 +61,6 @@ private:
     std::filesystem::path m_path;
     std::vector<std::string> m_tags;
     std::vector<std::unique_ptr<ContentBlock>> m_content;
-    std::vector<std::unique_ptr<Reference>> m_references;
 };
 
 }

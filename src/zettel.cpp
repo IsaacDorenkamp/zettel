@@ -10,14 +10,11 @@ using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::str
 
 namespace zettel {
 
-Zettel::Zettel(const Zettel::Id& id, const std::string& title, const path& path) : m_id(id), m_title(title), m_path(path), m_tags(), m_content(), m_references() {}
+Zettel::Zettel(const Zettel::Id& id, const std::string& title, const path& path) : m_id(id), m_title(title), m_path(path), m_tags(), m_content() {}
 Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.m_id, zettel.m_title, zettel.m_path) {
     m_tags = zettel.m_tags;
     for (const unique_ptr<ContentBlock>& block : zettel.m_content) {
         m_content.push_back(block->clone());
-    }
-    for (const unique_ptr<Reference>& ref : zettel.m_references) {
-        m_references.push_back(ref->clone());
     }
 }
 
@@ -36,10 +33,6 @@ const vector<unique_ptr<ContentBlock>>& Zettel::content() const {
     return m_content;
 }
 
-const vector<unique_ptr<Reference>>& Zettel::references() const {
-    return m_references;
-}
-
 void Zettel::setTitle(string title) {
     m_title = title;
 }
@@ -52,11 +45,6 @@ void Zettel::addTag(string tag) {
 ContentBlock* Zettel::addContentBlock(unique_ptr<ContentBlock>&& block) {
     m_content.push_back(std::move(block));
     return m_content.back().get();
-}
-
-Reference* Zettel::addReference(unique_ptr<Reference>&& reference) {
-    m_references.push_back(std::move(reference));
-    return m_references.back().get();
 }
 
 void Zettel::removeTag(string tag) {
@@ -72,16 +60,6 @@ bool Zettel::removeContentBlock(const Id& id) {
     for (vector<unique_ptr<ContentBlock>>::const_iterator it = m_content.begin(); it != m_content.end(); it++) {
         if ((*it)->id() == id) {
             m_content.erase(it);
-            return true;
-        }
-    }
-    return false;
-}
-
-bool Zettel::removeReference(const Id& id) {
-    for (vector<unique_ptr<Reference>>::const_iterator it = m_references.begin(); it != m_references.end(); it++) {
-        if ((*it)->id() == id) {
-            m_references.erase(it);
             return true;
         }
     }
@@ -105,31 +83,8 @@ const ContentBlock* Zettel::getContentBlock(const Id& id) const {
     }
     return nullptr;
 }
-
-Reference* Zettel::getReference(const Id& id) {
-    for (unique_ptr<Reference>& ptr : m_references) {
-        if (ptr->id() == id) {
-            return ptr.get();
-        }
-    }
-    return nullptr;
-}
-
-const Reference* Zettel::getReference(const Id& id) const {
-    for (const unique_ptr<Reference>& ptr : m_references) {
-        if (ptr->id() == id) {
-            return ptr.get();
-        }
-    }
-    return nullptr;
-}
-
 void Zettel::clearContent() {
     m_content.clear();
-}
-
-void Zettel::clearReferences() {
-    m_references.clear();
 }
 
 const path& Zettel::file() const {
@@ -162,18 +117,7 @@ void Zettel::save() {
             else body << c;
         }
         body << '\n';
-
         out << body.str();
-        body.str("");
-
-        options.first_line_offset = 0;
-        for (const unique_ptr<Reference>& reference : m_references) body << reference->format(PLAINTEXT_FORMAT);
-        options.line_size = LINE_WIDTH;
-        wrapped = wrapString(body.str(), options);
-
-        string content = body.str();
-        if (content.size()) out << '\n' << content;
-
         out.close();
     } catch (const ofstream::failure& exc) {
         throw ZettelException("Failed to write Zettel.");

@@ -5,6 +5,7 @@
 #include "format.hpp"
 #include "index.hpp"
 #include "meta.hpp"
+#include "parser.hpp"
 #include "sql.hpp"
 
 #include "zettel.hpp"
@@ -73,7 +74,10 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
         throw CommandException(fmt("Could not get next ID: %s", exc.what()));
     }
     unique_ptr<Zettel> result = make_unique<Zettel>(id, opts.title, ctx.root / fmt("%u.txt", id));
-    result->addContentBlock(make_unique<zettel::TextBlock>(0, content));
+
+    std::istringstream ss(content);
+    unique_ptr<Parser> p(new DefaultParser(ss));
+    while (!p->done()) result->addContentBlock(p->next());
     for (const string& tag : opts.tags) result->addTag(tag);
     try {
         ctx.index->begin();

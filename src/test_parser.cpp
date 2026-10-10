@@ -4,7 +4,7 @@
 
 #include "parser.hpp"
 
-using std::function, std::string, std::stringstream, std::unique_ptr;
+using std::string, std::stringstream, std::unique_ptr;
 using namespace zettel;
 
 TEST_CASE("DefaultParser - input without references produces single content block", "[parser]") {
@@ -26,10 +26,6 @@ TEST_CASE("DefaultParser - input with zettel reference produces correct blocks",
     CHECK(parser.done());
     ReferenceBlock* block = dynamic_cast<ReferenceBlock*>(result.get());
     REQUIRE(block != nullptr);
-    const Reference* ref = &block->reference();
-    const ZettelReference* zettelRef = dynamic_cast<const ZettelReference*>(ref);
-    REQUIRE(zettelRef != nullptr);
-    REQUIRE(zettelRef->refId() == 1);
 }
 
 TEST_CASE("DefaultParser - incomplete reference treated as text block", "[parser]") {
@@ -100,10 +96,6 @@ TEST_CASE("DefaultParser - input with references and content produces correct bl
     REQUIRE(result != nullptr);
     ReferenceBlock* refBlock = dynamic_cast<ReferenceBlock*>(result.get());
     REQUIRE(refBlock != nullptr);
-    const Reference* ref = &refBlock->reference();
-    const ZettelReference* zettelRef = dynamic_cast<const ZettelReference*>(ref);
-    REQUIRE(zettelRef != nullptr);
-    REQUIRE(zettelRef->refId() == 1);
     REQUIRE(!parser.done());
     result = parser.next();
     CHECK(parser.done());

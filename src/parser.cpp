@@ -106,7 +106,6 @@ unique_ptr<ContentBlock> DefaultParser::next() {
         if (delimiter != string::npos) {
             string kind = reference.substr(0, delimiter);
             string locator = reference.substr(delimiter + 1);
-            unique_ptr<Reference> ref;
             if (kind.compare("zettel") == 0) {
                 unsigned long parsed;
                 try {
@@ -117,11 +116,10 @@ unique_ptr<ContentBlock> DefaultParser::next() {
                     throw Parser::Exception(fmt("ID '%s' out of range!", locator.c_str()));
                 }
                 if (parsed > 0xFFFFFFFF) throw Parser::Exception(fmt("ID '%s' out of range!", locator.c_str()));
-                ref = unique_ptr<Reference>(new ZettelReference(nextId(), parsed));
+                content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), locator, fmt("%s://%lu", kind.c_str(), parsed)));
             } else {
-                ref = unique_ptr<Reference>(new GenericReference(nextId(), kind, locator));
+                content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), locator, fmt("%s://%s", kind.c_str(), locator.c_str())));
             }
-            content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), *ref));
         } else {
             content = unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + fullReference));
         }

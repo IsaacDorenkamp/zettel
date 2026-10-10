@@ -66,6 +66,11 @@ int main(int argc, char **argv) {
 
     bool quiet = program.get<bool>("--quiet");
     try {
+        if (!program.is_subcommand_used("init")) {
+            // init is the only subcommand which doesn't require the database to exist
+            if (!std::filesystem::is_directory(ctx.dotdir) || !db->valid())
+                throw cmd::CommandException(fmt("No Zettelkasten is initialized in %s.", ctx.root.c_str()));
+        }
         if (program.is_subcommand_used("init")) {
             cmd::initialize(ctx);
             if (!quiet) cout << ansi::block("Successfully").foreground(ansi::Color::GREEN).bold(true) << " initialized Zettelkasten at "

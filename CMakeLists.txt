@@ -43,7 +43,6 @@ set(COMMON_SOURCES
     "src/io.cpp"
     "src/index.cpp"
     "src/meta.cpp"
-    "src/references.cpp"
     "src/zettel.cpp"
     "src/sql.cpp"
     "src/parser.cpp"

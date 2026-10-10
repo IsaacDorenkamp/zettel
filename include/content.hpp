@@ -1,10 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "format.hpp"
-#include "references.hpp"
 
 namespace zettel {
 
@@ -39,16 +39,20 @@ protected:
 
 class ReferenceBlock : public ContentBlock {
 public:
-    ReferenceBlock(const Id& id, const Reference& ref);
+    ReferenceBlock(const Id& id, const std::string& uri, const std::optional<std::string>& text = std::nullopt);
     virtual ~ReferenceBlock() = default;
 
-    void setReference(std::unique_ptr<Reference>&& ref);
-    const Reference& reference() const;
+    void setURI(const std::string& uri);
+    const std::string& uri() const;
+
+    void setText(const std::optional<std::string>& text);
+    const std::optional<std::string>& text() const;
 
     virtual std::unique_ptr<ContentBlock> clone() const;
     virtual std::string format(const FormatOptions& options) const;
 protected:
-    std::unique_ptr<Reference> m_ref;
+    std::string m_uri;
+    std::optional<std::string> m_text;
 };
 
 }
