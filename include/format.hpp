@@ -4,19 +4,22 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace zettel {
 
 enum class DisplayMode {
-    ASCII, ANSI
+    ASCII = 0, ANSI = 1
 };
 
 struct FormatOptions {
+    constexpr FormatOptions(DisplayMode mode, uint16_t line_size, uint16_t first_line_offset) : mode(mode), line_size(line_size), first_line_offset(first_line_offset) {}
+
     DisplayMode mode;
     uint16_t line_size;
     uint16_t first_line_offset;
 };
+
+constexpr FormatOptions PLAINTEXT_FORMAT(DisplayMode::ASCII, 0, 0);
 
 template<typename ... Args>
 std::string fmt( const std::string& format, Args ... args )
@@ -30,6 +33,6 @@ std::string fmt( const std::string& format, Args ... args )
 }
 
 std::string stripWhitespace(std::string other);
-std::vector<std::string> wrapString(std::string str, const FormatOptions& options);
+std::string wrapString(std::string str, const FormatOptions& options);
 
 }

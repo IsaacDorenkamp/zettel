@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "format.hpp"
 #include "references.hpp"
@@ -17,7 +16,7 @@ public:
     ContentBlock(const ContentBlock& block);
     virtual ~ContentBlock() = default;
     virtual std::unique_ptr<ContentBlock> clone() const = 0;
-    virtual std::vector<std::string> format(const FormatOptions& options) const = 0;
+    virtual std::string format(const FormatOptions& options) const = 0;
 
     const Id& id() const;
 protected:
@@ -33,7 +32,7 @@ public:
     const std::string& text() const;
 
     virtual std::unique_ptr<ContentBlock> clone() const;
-    virtual std::vector<std::string> format(const FormatOptions& options) const;
+    virtual std::string format(const FormatOptions& options) const;
 protected:
     std::string m_text;
 };
@@ -47,7 +46,7 @@ public:
     const Reference& reference() const;
 
     virtual std::unique_ptr<ContentBlock> clone() const;
-    virtual std::vector<std::string> format(const FormatOptions& options) const;
+    virtual std::string format(const FormatOptions& options) const;
 protected:
     std::unique_ptr<Reference> m_ref;
 };

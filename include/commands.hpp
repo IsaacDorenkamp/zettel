@@ -1,11 +1,12 @@
 #pragma once
 
-#include "exception.hpp"
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "exception.hpp"
+#include "index.hpp"
 #include "zettel.hpp"
 
 namespace zettel {
@@ -26,7 +27,17 @@ struct NewOptions {
     bool edit;
 };
 
+struct SearchOptions {
+    std::string tag;
+};
+
+struct EditOptions {
+    uint32_t id;
+};
+
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
+std::vector<models::zettel> search(const Context& ctx, const SearchOptions& options);
+std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
 
 }
 

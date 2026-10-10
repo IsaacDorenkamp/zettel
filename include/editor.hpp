@@ -13,7 +13,7 @@ public:
     DEFINE_EXCEPTION;
     Editor(std::filesystem::path dotdir);
     virtual ~Editor() = default;
-    virtual std::string readInput() = 0;
+    virtual std::string readInput(std::optional<std::string> defaultText = std::nullopt) = 0;
 
     static std::unique_ptr<Editor> getInstance(std::filesystem::path dotdir);
 protected:
@@ -30,7 +30,7 @@ public:
     TerminalEditor(std::filesystem::path dotdir, std::string executable);
     virtual ~TerminalEditor() = default;
 
-    virtual std::string readInput();
+    virtual std::string readInput(std::optional<std::string> defaultText = std::nullopt);
 private:
     std::string m_executable;
     Args m_args;

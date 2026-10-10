@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#include <iostream>
+
 #include "format.hpp"
 #include "io.hpp"
 
@@ -23,12 +25,15 @@ TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEdi
 TerminalEditor::TerminalEditor(path dotdir, string executable, const TerminalEditor::Args& args) : TerminalEditor(dotdir, executable, args, {}) {}
 TerminalEditor::TerminalEditor(path dotdir, string executable) : TerminalEditor(dotdir, executable, {}) {}
 
-string TerminalEditor::readInput() {
+string TerminalEditor::readInput(optional<string> defaultText) {
     path toEdit = m_dotdir / "INPUT";
 
     // first, attempt to truncate the file
     ofstream truncStr(toEdit, ofstream::trunc);
-    if (truncStr.is_open()) truncStr.close();
+    if (truncStr.is_open()) {
+        if (defaultText) truncStr << *defaultText;
+        truncStr.close();
+    }
 
     pid_t pid = fork();
 
@@ -79,6 +84,7 @@ string TerminalEditor::readInput() {
             if (actualStatus == 0) {
                 optional<string> content = io::readfile(toEdit);
                 if (content) {
+                    if (content->size() > 0 && content->back() == '\n') content = content->substr(0, content->size() - 1);
                     return *content;
                 } else {
                     throw Editor::Exception("Could not read the edited file!");

@@ -1,5 +1,6 @@
 #include "zettel.hpp"
 
+#include "format.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -150,43 +151,28 @@ void Zettel::save() {
 
         // TODO: Put this constant somewhere else!
         const uint16_t LINE_WIDTH = 75;
-        FormatOptions options{
-            .mode = DisplayMode::ASCII,
-            .line_size = LINE_WIDTH - 1,
-            .first_line_offset = 0
-        };
+        FormatOptions options(DisplayMode::ASCII, LINE_WIDTH - 1, 0);
         stringstream body;
-        for (const unique_ptr<ContentBlock>& block : m_content) {
-            vector<string> lines = block->format(options);
-            if (lines.size() == 0) continue;
-            size_t back = lines.back().size();
-            first = true;
-            for (const string& line : lines) {
-                if (first) first = false;
-                else body << std::endl;
-                body << "|" << line;
-            }
-            if (back == LINE_WIDTH) {
-                body << std::endl;
-                options.first_line_offset = 0;
-            } else {
-                options.first_line_offset = back;
-            }
+        for (const unique_ptr<ContentBlock>& block : m_content) body << block->format(PLAINTEXT_FORMAT);
+        string wrapped = wrapString(body.str(), options);
+        body.str("|");
+        body.seekp(1);
+        for (char c : wrapped) {
+            if (c == '\n') body << "\n|";
+            else body << c;
         }
-
-        options.first_line_offset = 0;
-        for (const unique_ptr<Reference>& reference : m_references) {
-            vector<string> lines = reference->format(options);
-            first = true;
-            for (const string& line : lines) {
-                if (!first) first = true;
-                else body << std::endl;
-                body << line;
-            }
-            body << std::endl;
-        }
+        body << '\n';
 
         out << body.str();
+        body.str("");
+
+        options.first_line_offset = 0;
+        for (const unique_ptr<Reference>& reference : m_references) body << reference->format(PLAINTEXT_FORMAT);
+        options.line_size = LINE_WIDTH;
+        wrapped = wrapString(body.str(), options);
+
+        string content = body.str();
+        if (content.size()) out << '\n' << content;
 
         out.close();
     } catch (const ofstream::failure& exc) {
@@ -231,11 +217,13 @@ Zettel Zettel::load(const std::filesystem::path& path) {
         }
         if (!tagline.empty()) {
             std::istringstream tagsource(tagline);
-            for (string tag;; getline(tagsource, tag, ' ')) {
+            string tag;
+            for (getline(tagsource, tag, ' '); tag.size() > 0; getline(tagsource, tag, ' ')) {
                 if (tag.empty()) continue;
                 if (tag.front() != '#') throw ZettelException(fmt("Invalid tag '%s': must start with #", tag.c_str()));
                 tag = tag.substr(1);
                 result.addTag(tag);
+                tag.clear();
             }
         }
         // read content section

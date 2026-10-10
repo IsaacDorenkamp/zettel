@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 #include "format.hpp"
 
@@ -16,7 +15,7 @@ public:
 
     const Id& id() const;
 
-    virtual std::vector<std::string> format(const FormatOptions& options) const = 0;
+    virtual std::string format(const FormatOptions& options) const = 0;
     virtual std::unique_ptr<Reference> clone() const = 0;
 protected:
     Id m_id;
@@ -32,7 +31,7 @@ public:
     void setType(std::string type);
     void setLocator(std::string locator);
 
-    virtual std::vector<std::string> format(const FormatOptions& options) const;
+    virtual std::string format(const FormatOptions& options) const;
     virtual std::unique_ptr<Reference> clone() const;
 private:
     std::string m_type;
@@ -46,7 +45,7 @@ public:
     const Id& refId() const;
     void setRefId(const Id& refId);
 
-    virtual std::vector<std::string> format(const FormatOptions& options) const;
+    virtual std::string format(const FormatOptions& options) const;
     virtual std::unique_ptr<Reference> clone() const;
 protected:
     Id m_refId;

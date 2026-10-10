@@ -1,8 +1,9 @@
 #include "format.hpp"
 
 #include <cctype>
+#include <sstream>
 
-using std::string, std::vector;
+using std::string, std::stringstream;
 
 namespace zettel {
 
@@ -17,17 +18,20 @@ string stripWhitespace(string other) {
     else return other;
 }
 
-vector<string> wrapString(string str, const FormatOptions& options) {
-    vector<string> result;
+string wrapString(string str, const FormatOptions& options) {
+    if (options.line_size == 0) return str;
+
+    stringstream result;
     uint16_t lineSize = options.line_size - options.first_line_offset;
     uint16_t index = 0;
     do {
+        if (index > 0) result << '\n';
         string portion = str.substr(index, lineSize);
-        result.push_back(portion);
+        result << portion;
         index += portion.size();
         lineSize = options.line_size;
     } while (index < str.size());
-    return result;
+    return result.str();
 }
 
 }

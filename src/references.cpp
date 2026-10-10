@@ -2,7 +2,7 @@
 
 #include <string>
 
-using std::string, std::unique_ptr, std::vector;
+using std::string, std::unique_ptr;
 
 namespace zettel {
 
@@ -27,7 +27,7 @@ void GenericReference::setLocator(string locator) {
     m_locator = locator;
 }
 
-vector<string> GenericReference::format(const FormatOptions& options) const {
+string GenericReference::format(const FormatOptions& options) const {
     return wrapString(m_type + ':' + m_locator, options);
 }
 
@@ -45,7 +45,7 @@ void ZettelReference::setRefId(const Id& refId) {
     m_refId = refId;
 }
 
-vector<string> ZettelReference::format(const FormatOptions& options) const {
+string ZettelReference::format(const FormatOptions& options) const {
     return wrapString(std::to_string(m_refId), options);
 }
 

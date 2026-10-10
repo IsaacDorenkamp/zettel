@@ -2,6 +2,7 @@
 
 #include "content.hpp"
 #include "editor.hpp"
+#include "format.hpp"
 #include "index.hpp"
 #include "meta.hpp"
 #include "sql.hpp"
@@ -9,7 +10,7 @@
 #include "zettel.hpp"
 #define ZETTEL_VERSION "0.0.1"
 
-using std::make_unique, std::optional, std::string, std::unique_ptr;
+using std::make_unique, std::string, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -74,8 +75,45 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
         idx.commit();
     } catch (const zettel::ZettelException& exc) {
         throw CommandException(fmt("Error saving Zettel: %s", exc.what()));
+    } catch (const sql::SQLite::Exception& exc) {
+        throw CommandException(fmt("Error updating index: %s", exc.what()));
     }
     return result;
+}
+
+vector<models::zettel> search(const Context& ctx, const SearchOptions& options) {
+    std::filesystem::path dotdir = ctx.root / ".zettel";
+    Index idx((dotdir / "struct.db").c_str());
+    try {
+        return idx.search(options.tag);
+    } catch (const sql::SQLite::Exception& exc) {
+        throw CommandException(fmt("Error searching index: %s", exc.what()));
+    }
+}
+
+unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
+    std::filesystem::path dotdir = ctx.root / ".zettel";
+    try {
+        Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
+        unique_ptr<Editor> ed = Editor::getInstance(dotdir);
+        string updatedContent = ed->readInput(z.getContentBlock(0)->format(FormatOptions{ DisplayMode::ASCII, 0, 0 }));
+        z.clearContent();
+        z.addContentBlock(make_unique<zettel::TextBlock>(0, updatedContent));
+
+        Index idx((dotdir / "struct.db").c_str());
+        idx.begin();
+        idx.update(&z);
+        z.save();
+        idx.commit();
+
+        return make_unique<Zettel>(z);
+    } catch (const zettel::ZettelException& exc) {
+        throw CommandException(fmt("Could not edit Zettel %u: %s", options.id, exc.what()));
+    } catch (const zettel::Editor::Exception& exc) {
+        throw CommandException(fmt("Error getting input from editor: %s", exc.what()));
+    } catch (const sql::SQLite::Exception& exc) {
+        throw CommandException(fmt("Error updating index: %s", exc.what()));
+    }
 }
 
 }

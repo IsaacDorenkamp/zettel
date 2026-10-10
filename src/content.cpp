@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-using std::string, std::stringstream, std::unique_ptr, std::vector;
+using std::string, std::stringstream, std::unique_ptr;
 
 namespace zettel {
 
@@ -22,30 +22,28 @@ const string& TextBlock::text() const {
 unique_ptr<ContentBlock> TextBlock::clone() const {
     return unique_ptr<ContentBlock>(static_cast<ContentBlock*>(new TextBlock(m_id, m_text)));
 }
-vector<string> TextBlock::format(const FormatOptions& options) const {
-    vector<string> result;
-    stringstream line;
+string TextBlock::format(const FormatOptions& options) const {
+    if (options.line_size == 0) return m_text;
+    stringstream result;
     uint16_t lineSize = options.line_size - options.first_line_offset;
     uint16_t curLineSize = 0;
     char current;
     for (size_t index = 0; index < m_text.size(); index++) {
         current = m_text[index];
+        // TODO: carriage returns?
         if (current == '\n') {
-            result.push_back(line.str());
-            line.str("");
+            result << '\n';
             curLineSize = 0;
         } else {
-            line << current;
-            curLineSize++;
             if (curLineSize == lineSize) {
-                result.push_back(line.str());
-                line.str("");
+                result << '\n';
                 curLineSize = 0;
+                lineSize = options.line_size;
             }
+            curLineSize++;
         }
     }
-    result.push_back(line.str());
-    return result;
+    return result.str();
 }
 
 ReferenceBlock::ReferenceBlock(const Id& id, const Reference& ref) : ContentBlock(id), m_ref(ref.clone()) {}
@@ -56,7 +54,7 @@ const Reference& ReferenceBlock::reference() const { return *m_ref; }
 unique_ptr<ContentBlock> ReferenceBlock::clone() const {
     return unique_ptr<ContentBlock>(new ReferenceBlock(m_id, *m_ref));
 }
-vector<string> ReferenceBlock::format(const FormatOptions& options) const {
+string ReferenceBlock::format(const FormatOptions& options) const {
     return m_ref->format(options);
 }
 
