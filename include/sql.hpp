@@ -286,10 +286,15 @@ public:
         std::function<RowType(const std::vector<sqlite3_value*>&)> m_builder;
     };
 
+    enum ConnectResult {
+        Connected, Success, Failure
+    };
+
     SQLite(const char* uri);
     virtual ~SQLite();
 
     bool valid() const;
+    ConnectResult connect();
     void close();
     
     template <typename RowType>
@@ -333,7 +338,10 @@ public:
 
     void begin();
     void commit();
+
+    const std::string& uri() const;
 private:
+    std::string m_uri;
     sqlite3* m_handle;
     bool m_in_transaction;
     bool m_valid;

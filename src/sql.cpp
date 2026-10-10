@@ -14,10 +14,10 @@ void sfree(void* memory) {
     free(memory);
 }
 
-SQLite::SQLite(const char* uri) : m_handle(nullptr), m_in_transaction(false), m_valid(true), m_locked(false) {
+SQLite::SQLite(const char* uri) : m_uri(uri), m_handle(nullptr), m_in_transaction(false), m_valid(true), m_locked(false) {
     int status = sqlite3_open(uri, &m_handle);
     m_valid = status == SQLITE_OK;
-    if (m_valid) sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", nullptr, nullptr, nullptr);
+    if (m_valid) sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
 }
 
 SQLite::~SQLite() {
@@ -26,6 +26,34 @@ SQLite::~SQLite() {
 
 bool SQLite::valid() const {
     return (m_handle != nullptr) && m_valid;
+}
+
+SQLite::ConnectResult SQLite::connect() {
+    int status;
+    if (!m_handle) {
+        status = sqlite3_open(m_uri.c_str(), &m_handle);
+        m_valid = status == SQLITE_OK;
+        if (m_valid) {
+            sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+            return SQLite::ConnectResult::Success;
+        } else {
+            return SQLite::ConnectResult::Failure;
+        }
+    } else {
+        if (!m_valid) {
+            sqlite3_close(m_handle);
+            status = sqlite3_open(m_uri.c_str(), &m_handle);
+            m_valid = status == SQLITE_OK;
+            if (m_valid) {
+                sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+                return SQLite::ConnectResult::Success;
+            } else {
+                return SQLite::ConnectResult::Failure;
+            }
+        } else {
+            return SQLite::ConnectResult::Connected;
+        }
+    }
 }
 
 void SQLite::close() {
@@ -83,6 +111,10 @@ void SQLite::commit() {
         throw SQLite::Exception(errmsg);
     }
     m_in_transaction = false;
+}
+
+const string& SQLite::uri() const {
+    return m_uri;
 }
 
 void SQLite::checkState() {

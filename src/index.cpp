@@ -31,19 +31,20 @@ struct zettel_tag zettel_tag::from(const vector<sqlite3_value*>& row) {
 
 }
 
-Index::Index(const char* db) : m_db(db) {}
+Index::Index(const char* db) : m_db(std::make_shared<sql::SQLite>(db)) {}
+Index::Index(const std::shared_ptr<sql::SQLite>& db) : m_db(db) {}
 
 void Index::begin() {
-    m_db.begin();
+    m_db->begin();
 }
 
 void Index::commit() {
-    m_db.commit();
+    m_db->commit();
 }
 
 vector<models::zettel> Index::search(string tag) {
     vector<models::zettel> results;
-    sql::SQLite::iterator<models::zettel> rset = m_db.query<models::zettel>(
+    sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
         "SELECT zettel.id, zettel.title FROM zettel INNER JOIN tag ON tag.zettel_id = zettel.id WHERE tag.tag = ?",
         sql::paramlist{tag}
     );
@@ -54,29 +55,29 @@ vector<models::zettel> Index::search(string tag) {
 }
 
 void Index::insert(const Zettel* zettel) {
-    m_db.query(
+    m_db->query(
         "INSERT INTO zettel (id, title) VALUES (?, ?)",
         sql::paramlist{ (int)zettel->id(), zettel->title() }
     );
-    for (const string& tag : zettel->tags()) m_db.query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{ tag, (int)zettel->id() });
+    for (const string& tag : zettel->tags()) m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{ tag, (int)zettel->id() });
 }
 
 void Index::update(const Zettel* zettel) {
-    m_db.query("UPDATE zettel SET title=?", sql::paramlist{ zettel->title() });
+    m_db->query("UPDATE zettel SET title=?", sql::paramlist{ zettel->title() });
     stringstream query("DELETE FROM tag WHERE tag NOT IN (");
     query.seekp(0, std::ios_base::end);
     const vector<string>& tags = zettel->tags();
     for (int i = 0; i < tags.size(); i++) {
-        m_db.query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?) ON CONFLICT (zettel_id, tag) DO NOTHING", sql::paramlist{tags[i], (int)zettel->id()});
+        m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?) ON CONFLICT (zettel_id, tag) DO NOTHING", sql::paramlist{tags[i], (int)zettel->id()});
         if (i > 0) query << ", ";
         query << '?';
     }
     query << ')';
-    m_db.query(query.str(), sql::paramvec<string>{zettel->tags()});
+    m_db->query(query.str(), sql::paramvec<string>{zettel->tags()});
 }
 
 uint32_t Index::nextId() {
-    sql::SQLite::iterator<models::zettel> lastResult = m_db.query<models::zettel>("SELECT id, title FROM zettel ORDER BY id DESC LIMIT 1");
+    sql::SQLite::iterator<models::zettel> lastResult = m_db->query<models::zettel>("SELECT id, title FROM zettel ORDER BY id DESC LIMIT 1");
     optional<models::zettel> last = sql::maybeone(lastResult);
     if (last) {
         return last->id + 1;

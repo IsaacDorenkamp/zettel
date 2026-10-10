@@ -17,6 +17,11 @@ DEFINE_CUSTOM_EXCEPTION(CommandException);
 
 struct Context {
     std::filesystem::path root;
+    std::filesystem::path dotdir;
+    std::shared_ptr<sql::SQLite> db;
+    std::unique_ptr<Index> index;
+
+    bool valid() const;
 };
 
 void initialize(const Context& ctx);

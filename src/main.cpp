@@ -48,7 +48,14 @@ int main(int argc, char **argv) {
     program.add_subparser(search_cmd);
     program.add_subparser(edit_cmd);
 
-    cmd::Context ctx{ get_root_path() };
+    filesystem::path root = get_root_path();
+    std::shared_ptr<sql::SQLite> db = make_shared<sql::SQLite>((root / ".zettel" / "struct.db").c_str());
+    cmd::Context ctx{
+        .root = root,
+        .dotdir = root / ".zettel",
+        .db = db,
+        .index = make_unique<Index>(db)
+    };
 
     try {
         program.parse_args(argc, argv);

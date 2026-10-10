@@ -16,24 +16,27 @@ namespace zettel {
 
 namespace cmd {
 
+bool Context::valid() const {
+    return db->valid();
+}
+
 void initialize(const Context& ctx) {
     using std::filesystem::path, std::filesystem::is_directory, std::filesystem::create_directory;
-    path dotdir = ctx.root / ".zettel";
-    if (is_directory(dotdir)) {
+    if (is_directory(ctx.dotdir)) {
         throw CommandException(fmt(".zettel already exists in %s", ctx.root.c_str()));
     } else {
         try {
-            create_directory(dotdir);
+            create_directory(ctx.dotdir);
         } catch (const std::filesystem::filesystem_error& exc) {
             throw CommandException("Unable to create .zettel");
         }
     }
 
-    path metafile = dotdir / "META";
+    path metafile = ctx.dotdir / "META";
     zettel::meta::write(metafile, { {"version", ZETTEL_VERSION} });
 
-    path dbfile = dotdir / "struct.db";
-    sql::SQLite db(dbfile.c_str());
+    sql::SQLite::ConnectResult result = ctx.db->connect();
+    sql::SQLite& db = *ctx.db;
     if (db.valid()) {
         try {
             db.begin();
@@ -44,10 +47,10 @@ void initialize(const Context& ctx) {
             db.query("CREATE UNIQUE INDEX source_dest ON reference(source, dest)");
             db.commit();
         } catch (const sql::SQLite::Exception& exc) {
-            throw CommandException(fmt("Unable to create SQLite database at %s: %s", dbfile.c_str(), exc.what()));
+            throw CommandException(fmt("Unable to create SQLite database at %s: %s", db.uri().c_str(), exc.what()));
         }
     } else {
-        throw CommandException(fmt("Unable to open SQLite database at %s", dbfile.c_str()));
+        throw CommandException(fmt("Unable to open SQLite database at %s", db.uri().c_str()));
     }
 }
 
@@ -63,16 +66,20 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
         }
     }
 
-    Index idx((dotdir / "struct.db").c_str());
-    uint32_t id = idx.nextId();
+    uint32_t id;
+    try {
+        id = ctx.index->nextId();
+    } catch (const sql::SQLite::Exception& exc) {
+        throw CommandException(fmt("Could not get next ID: %s", exc.what()));
+    }
     unique_ptr<Zettel> result = make_unique<Zettel>(id, opts.title, ctx.root / fmt("%u.txt", id));
     result->addContentBlock(make_unique<zettel::TextBlock>(0, content));
     for (const string& tag : opts.tags) result->addTag(tag);
     try {
-        idx.begin();
-        idx.insert(result.get());
+        ctx.index->begin();
+        ctx.index->insert(result.get());
         result->save();
-        idx.commit();
+        ctx.index->commit();
     } catch (const zettel::ZettelException& exc) {
         throw CommandException(fmt("Error saving Zettel: %s", exc.what()));
     } catch (const sql::SQLite::Exception& exc) {
@@ -83,9 +90,8 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
 
 vector<models::zettel> search(const Context& ctx, const SearchOptions& options) {
     std::filesystem::path dotdir = ctx.root / ".zettel";
-    Index idx((dotdir / "struct.db").c_str());
     try {
-        return idx.search(options.tag);
+        return ctx.index->search(options.tag);
     } catch (const sql::SQLite::Exception& exc) {
         throw CommandException(fmt("Error searching index: %s", exc.what()));
     }
@@ -100,11 +106,10 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
         z.clearContent();
         z.addContentBlock(make_unique<zettel::TextBlock>(0, updatedContent));
 
-        Index idx((dotdir / "struct.db").c_str());
-        idx.begin();
-        idx.update(&z);
+        ctx.index->begin();
+        ctx.index->update(&z);
         z.save();
-        idx.commit();
+        ctx.index->commit();
 
         return make_unique<Zettel>(z);
     } catch (const zettel::ZettelException& exc) {

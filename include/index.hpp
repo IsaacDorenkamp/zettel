@@ -30,6 +30,7 @@ public:
     DEFINE_EXCEPTION;
 
     Index(const char* db_file);
+    Index(const std::shared_ptr<sql::SQLite>& db);
     virtual ~Index() = default;
 
     void begin();
@@ -41,7 +42,7 @@ public:
 
     uint32_t nextId();
 private:
-    sql::SQLite m_db;
+    std::shared_ptr<sql::SQLite> m_db;
 };
 
 }
