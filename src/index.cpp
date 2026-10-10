@@ -64,7 +64,7 @@ void Index::insert(const Zettel* zettel) {
 void Index::update(const Zettel* zettel) {
     m_db.query("UPDATE zettel SET title=?", sql::paramlist{ zettel->title() });
     stringstream query("DELETE FROM tag WHERE tag NOT IN (");
-    query.seekp(0, stringstream::seekdir::end);
+    query.seekp(0, std::ios_base::end);
     const vector<string>& tags = zettel->tags();
     for (int i = 0; i < tags.size(); i++) {
         m_db.query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?) ON CONFLICT (zettel_id, tag) DO NOTHING", sql::paramlist{tags[i], (int)zettel->id()});

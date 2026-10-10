@@ -4,8 +4,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
-
-#include <iostream>
+#include <string.h>
 
 #include "format.hpp"
 #include "io.hpp"
