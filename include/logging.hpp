@@ -22,6 +22,7 @@ void write(Level level, std::string message, Args&&... values) {
     switch (level) {
     case DEBUG:
         kind.setText("DEBUG");
+        kind.foreground(ansi::Color::MAGENTA);
         break;
     case INFO:
         kind.setText("INFO");
@@ -36,7 +37,11 @@ void write(Level level, std::string message, Args&&... values) {
         kind.foreground(ansi::Color::RED);
         break;
     }
-    std::cout << kind << " " << zettel::fmt(message, std::forward<delctype(values)>(values)...) << std::endl;
+    if constexpr (sizeof...(Args) > 0) {
+        std::cout << kind << " " << zettel::fmt(message, std::forward<decltype(values)>(values)...) << std::endl;
+    } else {
+        std::cout << kind << " " << message << std::endl;
+    }
 }
 
 #define LOG_WRAPPER(fn_name, log_level) template <typename... Args>\
