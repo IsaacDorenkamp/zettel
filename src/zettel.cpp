@@ -6,6 +6,7 @@
 #include <string>
 
 #include "format.hpp"
+#include "logging.hpp"
 #include "parser.hpp"
 
 using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
@@ -111,10 +112,10 @@ void Zettel::save() {
         FormatOptions options(DisplayMode::ASCII, LINE_WIDTH - 1, 0);
         stringstream body;
         for (const unique_ptr<ContentBlock>& block : m_content) body << block->format(PLAINTEXT_FORMAT);
-        string wrapped = wrapString(body.str(), options);
+        string formatted = body.str();
         body.str("|");
         body.seekp(1);
-        for (char c : wrapped) {
+        for (char c : formatted) {
             if (c == '\n') body << "\n|";
             else body << c;
         }
@@ -152,7 +153,7 @@ Zettel Zettel::load(const std::filesystem::path& path) {
         }
         std::string title;
         in.ignore(1, ' ');
-        std::getline(in, title);
+        getline(in, title);
         Zettel result(parsed, title, path);
         // parse tags
         string tagline;
@@ -180,7 +181,6 @@ Zettel Zettel::load(const std::filesystem::path& path) {
             line = line.substr(1);  // strip '|'
             content << line << std::endl;
         }
-
         content.seekg(0);
         unique_ptr<Parser> p(new DefaultParser(content));
         while (!p->done()) result.addContentBlock(p->next());

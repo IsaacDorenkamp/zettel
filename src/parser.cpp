@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+#include "logging.hpp"
+
 using std::function, std::istream, std::string, std::stringstream, std::unique_ptr;
 
 namespace zettel {
@@ -74,6 +76,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
         }
 
         string displayText = accum.str();
+        displayText = displayText.substr(1, displayText.size() - 2);
         accum = stringstream();
         layer = 0;
         escape = false;
@@ -95,11 +98,10 @@ unique_ptr<ContentBlock> DefaultParser::next() {
         });
         if (escape) accum << '\\';
 
-        if (layer > 0) {
+        string fullReference = accum.str();
+        if (layer > 0 || fullReference.empty() || fullReference.size() < 2) {
             return unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + accum.str()));
         }
-
-        string fullReference = accum.str();
         string reference = fullReference.substr(1, fullReference.size() - 2);
 
         size_t delimiter = reference.find(':');
@@ -116,9 +118,9 @@ unique_ptr<ContentBlock> DefaultParser::next() {
                     throw Parser::Exception(fmt("ID '%s' out of range!", locator.c_str()));
                 }
                 if (parsed > 0xFFFFFFFF) throw Parser::Exception(fmt("ID '%s' out of range!", locator.c_str()));
-                content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), locator, fmt("%s://%lu", kind.c_str(), parsed)));
+                content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), fmt("%s:%lu", kind.c_str(), parsed), displayText));
             } else {
-                content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), locator, fmt("%s://%s", kind.c_str(), locator.c_str())));
+                content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), fmt("%s:%s", kind.c_str(), locator.c_str()), displayText));
             }
         } else {
             content = unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + fullReference));
