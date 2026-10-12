@@ -1,5 +1,7 @@
 #include "commands.hpp"
 
+#include <sstream>
+
 #include "content.hpp"
 #include "editor.hpp"
 #include "format.hpp"
@@ -7,8 +9,8 @@
 #include "meta.hpp"
 #include "parser.hpp"
 #include "sql.hpp"
-
 #include "zettel.hpp"
+
 #define ZETTEL_VERSION "0.0.1"
 
 using std::make_unique, std::string, std::unique_ptr, std::vector;

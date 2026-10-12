@@ -32,6 +32,8 @@ string TerminalEditor::readInput(optional<string> defaultText) {
     if (truncStr.is_open()) {
         if (defaultText) truncStr << *defaultText;
         truncStr.close();
+    } else {
+        throw Editor::Exception(fmt("Unable to truncate %s", toEdit.c_str()));
     }
 
     pid_t pid = fork();

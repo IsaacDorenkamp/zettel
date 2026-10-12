@@ -1,10 +1,12 @@
 #include "zettel.hpp"
 
-#include "format.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "format.hpp"
+#include "parser.hpp"
 
 using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
 
@@ -179,12 +181,15 @@ Zettel Zettel::load(const std::filesystem::path& path) {
             content << line << std::endl;
         }
 
-        result.addContentBlock(unique_ptr<ContentBlock>(new TextBlock(0, content.str())));
+        content.seekg(0);
+        unique_ptr<Parser> p(new DefaultParser(content));
+        while (!p->done()) result.addContentBlock(p->next());
 
-        // TODO: all remaining lines are references
         return result;
     } catch (const ifstream::failure& exc) {
         throw ZettelException(fmt("Unable to load Zettel from %s", path.c_str()));
+    } catch (const Parser::Exception& exc) {
+        throw ZettelException(fmt("Unable to parse Zettel: %s", exc.what()));
     }
 }
 
