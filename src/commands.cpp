@@ -6,6 +6,7 @@
 #include "editor.hpp"
 #include "format.hpp"
 #include "index.hpp"
+#include "logging.hpp"
 #include "meta.hpp"
 #include "parser.hpp"
 #include "sql.hpp"
@@ -13,7 +14,7 @@
 
 #define ZETTEL_VERSION "0.0.1"
 
-using std::make_unique, std::string, std::unique_ptr, std::vector;
+using std::make_unique, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -65,7 +66,7 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
         try {
             content = ed->readInput();
         } catch (const zettel::Editor::Exception& exc) {
-            throw CommandException(exc.what());
+            throw CommandException(fmt("Unable to read input from editor: %s", exc.what()));
         }
     }
 
@@ -75,6 +76,7 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     } catch (const sql::SQLite::Exception& exc) {
         throw CommandException(fmt("Could not get next ID: %s", exc.what()));
     }
+
     unique_ptr<Zettel> result = make_unique<Zettel>(id, opts.title, ctx.root / fmt("%u.txt", id));
 
     std::istringstream ss(content);
@@ -108,9 +110,17 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
     try {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
         unique_ptr<Editor> ed = Editor::getInstance(dotdir);
-        string updatedContent = ed->readInput(z.getContentBlock(0)->format(FormatOptions{ DisplayMode::ASCII, 0, 0 }));
+        stringstream defaultContent;
+        for (const unique_ptr<ContentBlock>& block : z.content()) {
+            defaultContent << block->format(PLAINTEXT_FORMAT);
+        }
+        string updatedContent = ed->readInput(defaultContent.str());
         z.clearContent();
-        z.addContentBlock(make_unique<zettel::TextBlock>(0, updatedContent));
+
+        stringstream rawContent(updatedContent);
+        rawContent.seekg(0);
+        unique_ptr<Parser> p(new DefaultParser(rawContent));
+        while (!p->done()) z.addContentBlock(p->next());
 
         ctx.index->begin();
         ctx.index->update(&z);
