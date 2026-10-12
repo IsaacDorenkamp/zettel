@@ -36,6 +36,7 @@ public:
     void begin();
     void commit();
 
+    bool exists(uint32_t id);
     std::vector<models::zettel> search(std::string tag);
     void insert(const Zettel* note);
     void update(const Zettel* note);

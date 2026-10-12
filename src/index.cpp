@@ -1,9 +1,13 @@
 #include "index.hpp"
 
+#include <memory>
+#include <set>
 #include <string>
 #include <sstream>
 
-using std::optional, std::string, std::stringstream, std::vector;
+#include "logging.hpp"
+
+using std::optional, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -54,6 +58,11 @@ vector<models::zettel> Index::search(string tag) {
     return results;
 }
 
+bool Index::exists(uint32_t id) {
+    sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel WHERE zettel.id = ?", sql::paramlist{(int)id});
+    return (bool)sql::maybeone(rset);
+}
+
 void Index::insert(const Zettel* zettel) {
     m_db->query(
         "INSERT INTO zettel (id, title) VALUES (?, ?)",
@@ -67,6 +76,7 @@ void Index::update(const Zettel* zettel) {
     stringstream query("DELETE FROM tag WHERE tag NOT IN (");
     query.seekp(0, std::ios_base::end);
     const vector<string>& tags = zettel->tags();
+    // TODO: refactor to avoid querying within the loop
     for (int i = 0; i < tags.size(); i++) {
         m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?) ON CONFLICT (zettel_id, tag) DO NOTHING", sql::paramlist{tags[i], (int)zettel->id()});
         if (i > 0) query << ", ";
@@ -74,6 +84,36 @@ void Index::update(const Zettel* zettel) {
     }
     query << ')';
     m_db->query(query.str(), sql::paramvec<string>{zettel->tags()});
+
+    // we use a set since a Zettel might refer to the same Zettel multiple times
+    set<Zettel::Id> zettelRefs;
+    ReferenceBlock* ref;
+    string uri;
+    unsigned long zid;
+    for (const unique_ptr<ContentBlock>& block : zettel->content()) {
+        if ((ref = dynamic_cast<ReferenceBlock*>(block.get()))) {
+            uri = ref->uri();
+            if (uri.size() >= 8 && uri.substr(0, 7).compare("zettel:") == 0) {
+                try {
+                    zid = stoul(uri.substr(7));
+                    zettelRefs.insert(zid);
+                } catch (const std::exception& exc) {
+                    log::warn("Found reference to Zettel with invalid ID '%s'", uri.c_str());
+                }
+            }
+        }
+    }
+
+    query.str("DELETE FROM references WHERE source = ? AND dest NOT IN (");
+    for (size_t index = 0; index < zettelRefs.size(); index++) {
+        if (index > 0) query << ", ";
+        query << '?';
+    }
+    query << ')';
+    vector<string> params{std::to_string(zettel->id())};
+    for (const Zettel::Id& id : zettelRefs) params.push_back(std::to_string(id));
+    m_db->query(query.str(), sql::paramvec<string>{params});
+    // TODO: Add new references
 }
 
 uint32_t Index::nextId() {
