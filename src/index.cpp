@@ -33,6 +33,14 @@ struct zettel_tag zettel_tag::from(const vector<sqlite3_value*>& row) {
     };
 }
 
+struct reference reference::from(const vector<sqlite3_value*>& row) {
+    return {
+        (uint32_t)sqlite3_value_int(row[0]),
+        (uint32_t)sqlite3_value_int(row[1]),
+        sqlite3_value_int(row[2]) > 0
+    };
+}
+
 }
 
 Index::Index(const char* db) : m_db(std::make_shared<sql::SQLite>(db)) {}
@@ -69,6 +77,7 @@ void Index::insert(const Zettel* zettel) {
         sql::paramlist{ (int)zettel->id(), zettel->title() }
     );
     for (const string& tag : zettel->tags()) m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{ tag, (int)zettel->id() });
+    syncReferences(zettel);
 }
 
 void Index::update(const Zettel* zettel) {
@@ -84,8 +93,12 @@ void Index::update(const Zettel* zettel) {
     }
     query << ')';
     m_db->query(query.str(), sql::paramvec<string>{zettel->tags()});
+    syncReferences(zettel);
+}
 
-    // we use a set since a Zettel might refer to the same Zettel multiple times
+void Index::syncReferences(const Zettel* zettel) {
+    m_db->query("UPDATE reference SET valid = true WHERE dest = ? AND valid = 0", sql::paramlist{(int)zettel->id()});
+
     set<Zettel::Id> zettelRefs;
     ReferenceBlock* ref;
     string uri;
@@ -104,7 +117,8 @@ void Index::update(const Zettel* zettel) {
         }
     }
 
-    query.str("DELETE FROM references WHERE source = ? AND dest NOT IN (");
+    stringstream query("DELETE FROM reference WHERE source = ? AND dest NOT IN (");
+    query.seekp(0, std::ios_base::end);
     for (size_t index = 0; index < zettelRefs.size(); index++) {
         if (index > 0) query << ", ";
         query << '?';
@@ -113,7 +127,12 @@ void Index::update(const Zettel* zettel) {
     vector<string> params{std::to_string(zettel->id())};
     for (const Zettel::Id& id : zettelRefs) params.push_back(std::to_string(id));
     m_db->query(query.str(), sql::paramvec<string>{params});
-    // TODO: Add new references
+    for (const Zettel::Id& id : zettelRefs) {
+        sql::SQLite::iterator<models::reference> result = m_db->query<models::reference>("INSERT INTO reference (source, dest, valid) VALUES (:zid, :destid, (SELECT COUNT(id) FROM zettel WHERE id = :destid))"
+                "RETURNING source, dest, valid", sql::paramdict{ {"zid", (int)zettel->id()}, {"destid", (int)id} });
+        models::reference ref = sql::one(result);
+        if (!ref.valid) log::warn("Reference to non-existent note '%u'", id);
+    }
 }
 
 uint32_t Index::nextId() {

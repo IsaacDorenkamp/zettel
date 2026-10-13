@@ -23,6 +23,14 @@ typedef struct zettel_tag {
     static struct zettel_tag from(const std::vector<sqlite3_value*>& row);
 } zettel_tag;
 
+typedef struct reference {
+    Zettel::Id source;
+    Zettel::Id dest;
+    bool valid;
+
+    static struct reference from(const std::vector<sqlite3_value*>& row);
+} reference;
+
 }
 
 class Index {
@@ -43,6 +51,8 @@ public:
 
     uint32_t nextId();
 private:
+    void syncReferences(const Zettel* z);
+
     std::shared_ptr<sql::SQLite> m_db;
 };
 

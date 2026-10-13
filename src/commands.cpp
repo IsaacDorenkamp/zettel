@@ -6,7 +6,6 @@
 #include "editor.hpp"
 #include "format.hpp"
 #include "index.hpp"
-#include "logging.hpp"
 #include "meta.hpp"
 #include "parser.hpp"
 #include "sql.hpp"
@@ -47,7 +46,8 @@ void initialize(const Context& ctx) {
             db.query("CREATE TABLE zettel (id INTEGER PRIMARY KEY, title TEXT NOT NULL)");
             db.query("CREATE TABLE tag (zettel_id INTEGER NOT NULL, tag TEXT NOT NULL)");
             db.query("CREATE UNIQUE INDEX zid_tag ON tag(zettel_id, tag)");
-            db.query("CREATE TABLE reference (source INTEGER, dest INTEGER, valid INTEGER, FOREIGN KEY(source) REFERENCES zettel(id), FOREIGN KEY(dest) REFERENCES zettel(id))");
+            // NOTE: dest does not reference "zettel" because it is allowed to fail to refer
+            db.query("CREATE TABLE reference (source INTEGER, dest INTEGER, valid INTEGER, FOREIGN KEY(source) REFERENCES zettel(id))");
             db.query("CREATE UNIQUE INDEX source_dest ON reference(source, dest)");
             db.commit();
         } catch (const sql::SQLite::Exception& exc) {
