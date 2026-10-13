@@ -6,7 +6,6 @@
 #include <string>
 
 #include "format.hpp"
-#include "logging.hpp"
 #include "parser.hpp"
 
 using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
@@ -191,6 +190,16 @@ Zettel Zettel::load(const std::filesystem::path& path) {
     } catch (const Parser::Exception& exc) {
         throw ZettelException(fmt("Unable to parse Zettel: %s", exc.what()));
     }
+}
+
+Zettel& Zettel::operator=(Zettel&& other) {
+    m_id = other.m_id;
+    m_title = other.m_title;
+    m_path = other.m_path;
+    m_tags = other.m_tags;
+    m_content.clear();
+    for (unique_ptr<ContentBlock>& block : other.m_content) m_content.push_back(std::move(block));
+    return *this;
 }
 
 }

@@ -25,18 +25,19 @@ bool Context::valid() const {
 
 void initialize(const Context& ctx) {
     using std::filesystem::path, std::filesystem::is_directory, std::filesystem::create_directory;
-    if (is_directory(ctx.dotdir)) {
-        throw CommandException(fmt(".zettel already exists in %s", ctx.root.c_str()));
-    } else {
-        try {
-            create_directory(ctx.dotdir);
-        } catch (const std::filesystem::filesystem_error& exc) {
-            throw CommandException("Unable to create .zettel");
+    if (!ctx.dotdir.empty()) {
+        if (is_directory(ctx.dotdir)) {
+            throw CommandException(fmt(".zettel already exists in %s", ctx.root.c_str()));
+        } else {
+            try {
+                create_directory(ctx.dotdir);
+            } catch (const std::filesystem::filesystem_error& exc) {
+                throw CommandException("Unable to create .zettel");
+            }
         }
+        path metafile = ctx.dotdir / "META";
+        zettel::meta::write(metafile, { {"version", ZETTEL_VERSION} });
     }
-
-    path metafile = ctx.dotdir / "META";
-    zettel::meta::write(metafile, { {"version", ZETTEL_VERSION} });
 
     sql::SQLite::ConnectResult result = ctx.db->connect();
     sql::SQLite& db = *ctx.db;

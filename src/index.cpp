@@ -66,9 +66,17 @@ vector<models::zettel> Index::search(string tag) {
     return results;
 }
 
-bool Index::exists(uint32_t id) {
+bool Index::exists(const Zettel::Id& id) {
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel WHERE zettel.id = ?", sql::paramlist{(int)id});
     return (bool)sql::maybeone(rset);
+}
+
+set<Zettel::Id> Index::getReferences(const Zettel::Id& id, bool validOnly) {
+    string query = fmt("SELECT source, dest, valid FROM reference WHERE source = ?%s", validOnly ? " AND valid > 0" : "");
+    sql::SQLite::iterator<models::reference> rset = m_db->query<models::reference>(query, sql::paramlist{(int)id});
+    set<Zettel::Id> ids;
+    while (!rset.done()) ids.insert((rset++)->dest);
+    return ids;
 }
 
 void Index::insert(const Zettel* zettel) {
@@ -97,6 +105,7 @@ void Index::update(const Zettel* zettel) {
 }
 
 void Index::syncReferences(const Zettel* zettel) {
+    std::cout << "syncing " << zettel->id() << std::endl;
     m_db->query("UPDATE reference SET valid = true WHERE dest = ? AND valid = 0", sql::paramlist{(int)zettel->id()});
 
     set<Zettel::Id> zettelRefs;
@@ -117,6 +126,7 @@ void Index::syncReferences(const Zettel* zettel) {
         }
     }
 
+    // FIXME: This doesn't seem to be deleting the rows it should be.
     stringstream query("DELETE FROM reference WHERE source = ? AND dest NOT IN (");
     query.seekp(0, std::ios_base::end);
     for (size_t index = 0; index < zettelRefs.size(); index++) {
@@ -124,9 +134,13 @@ void Index::syncReferences(const Zettel* zettel) {
         query << '?';
     }
     query << ')';
-    vector<string> params{std::to_string(zettel->id())};
-    for (const Zettel::Id& id : zettelRefs) params.push_back(std::to_string(id));
-    m_db->query(query.str(), sql::paramvec<string>{params});
+    vector<int> params{(int)zettel->id()};
+    for (const Zettel::Id& id : zettelRefs) {
+        std::cout << "preserving ref " << id << std::endl;
+        params.push_back((int)id);
+    }
+    if (zettelRefs.size() > 0) std::cout << std::endl;
+    m_db->query(query.str(), sql::paramvec<int>{params});
     for (const Zettel::Id& id : zettelRefs) {
         sql::SQLite::iterator<models::reference> result = m_db->query<models::reference>("INSERT INTO reference (source, dest, valid) VALUES (:zid, :destid, (SELECT COUNT(id) FROM zettel WHERE id = :destid))"
                 "RETURNING source, dest, valid", sql::paramdict{ {"zid", (int)zettel->id()}, {"destid", (int)id} });
@@ -135,7 +149,7 @@ void Index::syncReferences(const Zettel* zettel) {
     }
 }
 
-uint32_t Index::nextId() {
+Zettel::Id Index::nextId() {
     sql::SQLite::iterator<models::zettel> lastResult = m_db->query<models::zettel>("SELECT id, title FROM zettel ORDER BY id DESC LIMIT 1");
     optional<models::zettel> last = sql::maybeone(lastResult);
     if (last) {

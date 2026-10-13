@@ -100,7 +100,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
 
         string fullReference = accum.str();
         if (layer > 0 || fullReference.empty() || fullReference.size() < 2) {
-            return unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + accum.str()));
+            return unique_ptr<ContentBlock>(new TextBlock(nextId(), fmt("[%s]%s", displayText.c_str(), accum.str().c_str())));
         }
         string reference = fullReference.substr(1, fullReference.size() - 2);
 
@@ -123,7 +123,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
                 content = unique_ptr<ContentBlock>(new ReferenceBlock(nextId(), fmt("%s:%s", kind.c_str(), locator.c_str()), displayText));
             }
         } else {
-            content = unique_ptr<ContentBlock>(new TextBlock(nextId(), displayText + fullReference));
+            content = unique_ptr<ContentBlock>(new TextBlock(nextId(), fmt("[%s]%s", displayText.c_str(), fullReference.c_str())));
         }
     } else {
         // go until we find unescaped opening bracket

@@ -48,13 +48,14 @@ public:
     const ContentBlock* getContentBlock(const ContentBlock::Id& id) const;
 
     void clearContent();
-    void clearReferences();
 
     const std::filesystem::path& file() const;
 
     void save();
 
     static Zettel load(const std::filesystem::path& file);
+
+    Zettel& operator=(Zettel&& other);
 private:
     Id m_id;
     std::string m_title;

@@ -36,6 +36,7 @@ TEST_CASE("DefaultParser - incomplete reference treated as text block", "[parser
     CHECK(parser.done());
     TextBlock* block = dynamic_cast<TextBlock*>(result.get());
     REQUIRE(block != nullptr);
+    INFO(fmt("text: %s", block->text().c_str()));
     REQUIRE(block->text().compare("[incomplete reference](zettel:") == 0);
 }
 

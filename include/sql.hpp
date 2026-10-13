@@ -191,7 +191,9 @@ public:
                 void* newbuf = salloc(arg.size());
                 memcpy(newbuf, arg.c_str(), arg.size());
                 return sqlite3_bind_text(statement, index, (const char*)newbuf, arg.size(), &sfree);
-            } else {
+            } else if constexpr (std::is_same_v<T, int>) {
+                return sqlite3_bind_int(statement, index, (*m_source)[index]);
+            }else {
                 static_assert(dependent_false<T>, "Unsupported type");
             }
         }

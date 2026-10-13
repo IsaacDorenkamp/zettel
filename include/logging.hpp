@@ -3,7 +3,6 @@
 #include <iostream>
 #include <string>
 
-#include "ansi.hpp"
 #include "format.hpp"
 
 namespace log {
@@ -15,38 +14,48 @@ enum Level {
     ERROR
 };
 
+struct LogRecord {
+    Level level;
+    std::string message;
+};
+
+class LogHandler {
+public:
+    virtual ~LogHandler() = default;
+    virtual void handle(const LogRecord& record) = 0;
+};
+
+class StreamLogHandler : public LogHandler {
+public:
+    StreamLogHandler(std::ostream* stream, bool ansi = false);
+    virtual void handle(const LogRecord& record);
+private:
+    std::ostream* m_stream;
+    bool m_ansi;
+};
+
+class CaptureLogHandler : public LogHandler {
+public:
+    CaptureLogHandler();
+    virtual void handle(const LogRecord& record);
+
+    const std::vector<LogRecord>& records() const;
+    void clear();
+private:
+    std::vector<LogRecord> m_records;
+};
+
+void log(const LogRecord& record);
+
 template <typename... Args>
-void write(Level level, std::string message, Args&&... values) {
-    ansi::ANSIBlock kind;
-    kind.bold();
-    switch (level) {
-    case DEBUG:
-        kind.setText("DEBUG");
-        kind.foreground(ansi::Color::MAGENTA);
-        break;
-    case INFO:
-        kind.setText("INFO");
-        kind.foreground(ansi::Color::BLUE);
-        break;
-    case WARNING:
-        kind.setText("WARNING");
-        kind.foreground(ansi::Color::YELLOW);
-        break;
-    case ERROR:
-        kind.setText("ERROR");
-        kind.foreground(ansi::Color::RED);
-        break;
-    }
-    if constexpr (sizeof...(Args) > 0) {
-        std::cout << kind << " " << zettel::fmt(message, std::forward<decltype(values)>(values)...) << std::endl;
-    } else {
-        std::cout << kind << " " << message << std::endl;
-    }
+void logf(Level level, std::string format, Args&&... args) {
+    std::string message = zettel::fmt(format, std::forward<decltype(args)>(args)...);
+    log(LogRecord{ level, message });
 }
 
 #define LOG_WRAPPER(fn_name, log_level) template <typename... Args>\
-void fn_name(std::string message, Args&&... values) {\
-    write(log_level, message, std::forward<decltype(values)>(values)...);\
+void fn_name(std::string message, Args&&... args) {\
+    logf(log_level, message, std::forward<decltype(args)>(args)...);\
 }\
 
 LOG_WRAPPER(debug, DEBUG);
@@ -55,5 +64,8 @@ LOG_WRAPPER(warn, WARNING);
 LOG_WRAPPER(error, ERROR);
 
 #undef LOG_WRAPPER
+
+void putHandler(std::string name, const std::shared_ptr<LogHandler>& handler);
+std::shared_ptr<LogHandler> popHandler(std::string name);
 
 }

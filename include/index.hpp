@@ -1,5 +1,9 @@
 #pragma once
 
+#include <memory>
+#include <set>
+#include <vector>
+
 #include "exception.hpp"
 #include "sql.hpp"
 #include "zettel.hpp"
@@ -44,12 +48,14 @@ public:
     void begin();
     void commit();
 
-    bool exists(uint32_t id);
+    bool exists(const Zettel::Id& id);
+    std::set<Zettel::Id> getReferences(const Zettel::Id& id, bool validOnly = true);
+
     std::vector<models::zettel> search(std::string tag);
     void insert(const Zettel* note);
     void update(const Zettel* note);
 
-    uint32_t nextId();
+    Zettel::Id nextId();
 private:
     void syncReferences(const Zettel* z);
 
