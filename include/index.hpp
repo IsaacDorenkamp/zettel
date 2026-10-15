@@ -47,6 +47,7 @@ public:
 
     void begin();
     void commit();
+    void rollback();
 
     bool exists(const Zettel::Id& id);
     std::set<Zettel::Id> getReferences(const Zettel::Id& id, bool validOnly = true);

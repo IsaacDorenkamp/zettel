@@ -52,6 +52,7 @@ void initialize(const Context& ctx) {
             db.query("CREATE UNIQUE INDEX source_dest ON reference(source, dest)");
             db.commit();
         } catch (const sql::SQLite::Exception& exc) {
+            db.rollback();
             throw CommandException(fmt("Unable to create SQLite database at %s: %s", db.uri().c_str(), exc.what()));
         }
     } else {
@@ -92,6 +93,7 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     } catch (const zettel::ZettelException& exc) {
         throw CommandException(fmt("Error saving Zettel: %s", exc.what()));
     } catch (const sql::SQLite::Exception& exc) {
+        ctx.index->rollback();
         throw CommandException(fmt("Error updating index: %s", exc.what()));
     }
     return result;
@@ -134,6 +136,7 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
     } catch (const zettel::Editor::Exception& exc) {
         throw CommandException(fmt("Error getting input from editor: %s", exc.what()));
     } catch (const sql::SQLite::Exception& exc) {
+        ctx.index->rollback();
         throw CommandException(fmt("Error updating index: %s", exc.what()));
     }
 }
