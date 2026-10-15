@@ -115,7 +115,11 @@ void Index::update(const Zettel* zettel) {
 void Index::remove(const Zettel* zettel) {
     m_db->begin();
     m_db->query("DELETE FROM zettel WHERE id = ?", sql::paramlist{(int)zettel->id()});
-    m_db->query("UPDATE reference SET valid = 0 WHERE dest = ?", sql::paramlist{(int)zettel->id()});
+    sql::SQLite::iterator<models::reference> affected = m_db->query<models::reference>("UPDATE reference SET valid = 0 WHERE dest = ? RETURNING source, dest, valid", sql::paramlist{(int)zettel->id()});
+    while (!affected.done()) {
+        log::warn("A reference from %u to %u is now invalid", affected->source, affected->dest);
+        affected++;
+    }
     m_db->commit();
 }
 

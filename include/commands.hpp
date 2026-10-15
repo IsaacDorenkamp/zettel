@@ -37,12 +37,17 @@ struct SearchOptions {
 };
 
 struct EditOptions {
-    uint32_t id;
+    Zettel::Id id;
+};
+
+struct DeleteOptions {
+    Zettel::Id id;
 };
 
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
 std::vector<models::zettel> search(const Context& ctx, const SearchOptions& options);
 std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
+void remove(const Context& ctx, const DeleteOptions& options);
 
 }
 

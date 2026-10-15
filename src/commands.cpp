@@ -141,6 +141,21 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
     }
 }
 
+void remove(const Context& ctx, const DeleteOptions& options) {
+    try {
+        Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
+        ctx.index->begin();
+        ctx.index->remove(&z);
+        std::filesystem::remove(z.file());
+        ctx.index->commit();
+    } catch(const zettel::ZettelException& exc) {
+        throw CommandException(fmt("Could not edit Zettel %u: %s", options.id, exc.what()));
+    } catch (const sql::SQLite::Exception& exc) {
+        ctx.index->rollback();
+        throw CommandException(fmt("Error removing Zettel: %s", exc.what()));
+    }
+}
+
 }
 
 }

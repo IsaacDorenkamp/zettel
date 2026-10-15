@@ -175,3 +175,23 @@ TEST_CASE_METHOD(IndexFixture, "search by tag", "[index]") {
     REQUIRE(results.size() == 5);
     for (int i = 0; i < 5; i++) REQUIRE(results[4 - i].id == (i + 1) * 2);
 }
+
+TEST_CASE_METHOD(IndexFixture, "delete a Zettel", "[index]") {
+    Zettel z1(0, "Ingress", "");
+    Zettel z2(1, "Hallway", "");
+    z2.addContentBlock(std::unique_ptr<ContentBlock>(new ReferenceBlock(0, "zettel:0", "the ingress")));
+    m_idx->insert(&z1);
+    m_idx->insert(&z2);
+    REQUIRE(m_idx->exists(0));
+    REQUIRE(m_idx->exists(1));
+
+    set<Zettel::Id> refs = m_idx->getReferences(z2.id(), true);
+    REQUIRE(refs.size() == 1);
+
+    m_idx->remove(&z1);
+
+    const vector<log::LogRecord>& records = m_captureHandler->records();
+    REQUIRE(records.size() == 1);
+    REQUIRE(records[0].level == log::WARNING);
+    REQUIRE(records[0].message.compare("A reference from 1 to 0 is now invalid") == 0);
+}
