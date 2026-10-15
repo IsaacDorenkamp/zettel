@@ -34,6 +34,20 @@ struct TestRow2 {
     }
 };
 
+struct TestRow3 {
+    int a;
+    int b;
+    int c;
+
+    static TestRow3 from(const std::vector<sqlite3_value*>& values) {
+        return TestRow3 {
+            sqlite3_value_int(values[0]),
+            sqlite3_value_int(values[1]),
+            sqlite3_value_int(values[2])
+        };
+    }
+};
+
 using namespace zettel;
 
 TEST_CASE("validity checks", "[sql]") {
@@ -163,4 +177,29 @@ TEST_CASE("binding errors", "[sql]") {
     } catch (const sql::SQLite::Exception& exc) {
         REQUIRE(strcmp(exc.what(), "Failed to bind parameters to statement: Mismatch between query parameters and number of parameters in list") == 0);
     }
+}
+
+TEST_CASE("vector param adapter", "[sql]") {
+    sql::SQLite db(":memory:");
+    db.query("CREATE TABLE test (a INT, b INT, c INT)");
+    std::vector<int> values{10, 20, 30};
+    db.query("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", zettel::sql::paramvec<int>{values});
+
+    sql::SQLite::iterator<TestRow3> result = db.query<TestRow3>("SELECT a, b, c FROM test");
+    TestRow3 row = sql::one(result);
+    REQUIRE(row.a == 10);
+    REQUIRE(row.b == 20);
+    REQUIRE(row.c == 30);
+}
+
+TEST_CASE("delete query", "[sql]") {
+    sql::SQLite db(":memory:");
+    db.query("CREATE TABLE test (a INT, b TEXT)");
+    db.query("INSERT INTO test (a, b) VALUES (1, \"hello\")");
+    db.query("DELETE FROM test");
+    sql::SQLite::iterator<int> result = db.query<int>("SELECT count(a) FROM test", [](const std::vector<sqlite3_value*>& row) {
+        return sqlite3_value_int(row[0]);
+    });
+    int count = sql::one(result);
+    REQUIRE(count == 0);
 }

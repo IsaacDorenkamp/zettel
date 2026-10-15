@@ -93,7 +93,6 @@ TEST_CASE_METHOD(IndexFixture, "insert zettel with bad reference", "[index]") {
 }
 
 TEST_CASE_METHOD(IndexFixture, "update zettel with bad reference to good reference", "[index]") {
-    std::cout << "=====" << std::endl;
     Zettel z1 = make_zettel("ingress", "this is the ingress point");
     Zettel z2 = make_zettel("egress", "this is the egress point from the [ingress](zettel:100)", 1);
     m_idx->insert(&z1);
@@ -122,10 +121,6 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with bad reference to good referen
     // check our references
     sql::SQLite::iterator<models::reference> results = m_db->query<models::reference>("SELECT source, dest, valid FROM reference");
     vector<models::reference> mrefs = sql::gather(results);
-    INFO(fmt("mrefs: %zd", mrefs.size()));
-    for (const models::reference& ref : mrefs) {
-        std::cout << fmt("source: %u\tdest: %u\tvalid: %d", ref.source, ref.dest, ref.valid) << std::endl;
-    }
 
     // ensure that there is a valid reference, and no invalid references
     refs = m_idx->getReferences(z2.id(), true);
@@ -133,8 +128,7 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with bad reference to good referen
     REQUIRE(refs.find(0) != refs.end());
 
     refs = m_idx->getReferences(z2.id(), false);
-    REQUIRE(refs.size() == 0);
-    std::cout << "=====" << std::endl;
+    REQUIRE(refs.size() == 1);
 }
 
 TEST_CASE_METHOD(IndexFixture, "update zettel with good reference to bad reference", "[index]") {
@@ -151,7 +145,7 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with good reference to bad referen
     REQUIRE(refs.find(0) != refs.end());
 
     refs = m_idx->getReferences(z2.id(), false);
-    REQUIRE(refs.size() == 0);
+    REQUIRE(refs.size() == 1);
 
     z2 = make_zettel("egress", "this is the egress point from the [ingress](zettel:100)", 1);
     m_idx->update(&z2);
@@ -168,4 +162,16 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with good reference to bad referen
     set<Zettel::Id> allRefs = m_idx->getReferences(z2.id(), false);
     REQUIRE(allRefs.size() == 1);
     REQUIRE(allRefs.find(100) != allRefs.end());
+}
+
+TEST_CASE_METHOD(IndexFixture, "search by tag", "[index]") {
+    Zettel z(0, "", "");
+    for (int i = 1; i <= 10; i++) {
+        z = Zettel(i, fmt("Zettel %d", i), "");
+        if (i % 2 == 0) z.addTag("even");
+        m_idx->insert(&z);
+    }
+    vector<models::zettel> results = m_idx->search("even");
+    REQUIRE(results.size() == 5);
+    for (int i = 0; i < 5; i++) REQUIRE(results[4 - i].id == (i + 1) * 2);
 }

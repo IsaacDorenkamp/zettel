@@ -2,8 +2,6 @@
 
 #include <sstream>
 
-#include "logging.hpp"
-
 using std::function, std::istream, std::string, std::stringstream, std::unique_ptr;
 
 namespace zettel {

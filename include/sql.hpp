@@ -185,17 +185,18 @@ public:
         size_t args = sqlite3_bind_parameter_count(statement);
         if (args != m_source->size()) return -1;
         int ok;
-        for (int index = 1; index < args; index++) {
+        for (int index = 1; index <= args; index++) {
             if constexpr (std::is_same_v<T, std::string>) {
-                std::string arg = (*m_source)[index];
+                std::string arg = (*m_source)[index - 1];
                 void* newbuf = salloc(arg.size());
                 memcpy(newbuf, arg.c_str(), arg.size());
-                return sqlite3_bind_text(statement, index, (const char*)newbuf, arg.size(), &sfree);
+                ok = sqlite3_bind_text(statement, index, (const char*)newbuf, arg.size(), &sfree);
             } else if constexpr (std::is_same_v<T, int>) {
-                return sqlite3_bind_int(statement, index, (*m_source)[index]);
-            }else {
+                ok = sqlite3_bind_int(statement, index, (*m_source)[index - 1]);
+            } else {
                 static_assert(dependent_false<T>, "Unsupported type");
             }
+            if (ok != SQLITE_OK) return ok;
         }
         return SQLITE_OK;
     }

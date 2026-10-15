@@ -57,7 +57,7 @@ void Index::commit() {
 vector<models::zettel> Index::search(string tag) {
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
-        "SELECT zettel.id, zettel.title FROM zettel INNER JOIN tag ON tag.zettel_id = zettel.id WHERE tag.tag = ?",
+        "SELECT zettel.id, zettel.title FROM zettel INNER JOIN tag ON tag.zettel_id = zettel.id WHERE tag.tag = ? ORDER BY id DESC",
         sql::paramlist{tag}
     );
     for (; !rset.done(); ++rset) {
@@ -89,7 +89,7 @@ void Index::insert(const Zettel* zettel) {
 }
 
 void Index::update(const Zettel* zettel) {
-    m_db->query("UPDATE zettel SET title=?", sql::paramlist{ zettel->title() });
+    m_db->query("UPDATE zettel SET title=? WHERE id=?", sql::paramlist{ zettel->title(), (int)zettel->id() });
     stringstream query("DELETE FROM tag WHERE tag NOT IN (");
     query.seekp(0, std::ios_base::end);
     const vector<string>& tags = zettel->tags();
@@ -105,7 +105,6 @@ void Index::update(const Zettel* zettel) {
 }
 
 void Index::syncReferences(const Zettel* zettel) {
-    std::cout << "syncing " << zettel->id() << std::endl;
     m_db->query("UPDATE reference SET valid = true WHERE dest = ? AND valid = 0", sql::paramlist{(int)zettel->id()});
 
     set<Zettel::Id> zettelRefs;
@@ -126,7 +125,6 @@ void Index::syncReferences(const Zettel* zettel) {
         }
     }
 
-    // FIXME: This doesn't seem to be deleting the rows it should be.
     stringstream query("DELETE FROM reference WHERE source = ? AND dest NOT IN (");
     query.seekp(0, std::ios_base::end);
     for (size_t index = 0; index < zettelRefs.size(); index++) {
@@ -134,12 +132,9 @@ void Index::syncReferences(const Zettel* zettel) {
         query << '?';
     }
     query << ')';
-    vector<int> params{(int)zettel->id()};
-    for (const Zettel::Id& id : zettelRefs) {
-        std::cout << "preserving ref " << id << std::endl;
-        params.push_back((int)id);
-    }
-    if (zettelRefs.size() > 0) std::cout << std::endl;
+    vector<int> params;
+    params.push_back(zettel->id());
+    for (const Zettel::Id& id : zettelRefs) params.push_back((int)id);
     m_db->query(query.str(), sql::paramvec<int>{params});
     for (const Zettel::Id& id : zettelRefs) {
         sql::SQLite::iterator<models::reference> result = m_db->query<models::reference>("INSERT INTO reference (source, dest, valid) VALUES (:zid, :destid, (SELECT COUNT(id) FROM zettel WHERE id = :destid))"

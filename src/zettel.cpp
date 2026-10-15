@@ -1,7 +1,6 @@
 #include "zettel.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <string>
 
