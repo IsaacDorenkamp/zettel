@@ -340,13 +340,14 @@ public:
     void query(std::string, const sql::IParamAdapter& params);
 
     void begin();
+    void rollback();
     void commit();
 
     const std::string& uri() const;
 private:
     std::string m_uri;
     sqlite3* m_handle;
-    bool m_in_transaction;
+    int m_transaction_layers;
     bool m_valid;
     bool m_locked;
 

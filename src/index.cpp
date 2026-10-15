@@ -80,15 +80,18 @@ set<Zettel::Id> Index::getReferences(const Zettel::Id& id, bool validOnly) {
 }
 
 void Index::insert(const Zettel* zettel) {
+    m_db->begin();
     m_db->query(
         "INSERT INTO zettel (id, title) VALUES (?, ?)",
         sql::paramlist{ (int)zettel->id(), zettel->title() }
     );
     for (const string& tag : zettel->tags()) m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?)", sql::paramlist{ tag, (int)zettel->id() });
     syncReferences(zettel);
+    m_db->commit();
 }
 
 void Index::update(const Zettel* zettel) {
+    m_db->begin();
     m_db->query("UPDATE zettel SET title=? WHERE id=?", sql::paramlist{ zettel->title(), (int)zettel->id() });
     stringstream query("DELETE FROM tag WHERE tag NOT IN (");
     query.seekp(0, std::ios_base::end);
@@ -102,6 +105,14 @@ void Index::update(const Zettel* zettel) {
     query << ')';
     m_db->query(query.str(), sql::paramvec<string>{zettel->tags()});
     syncReferences(zettel);
+    m_db->commit();
+}
+
+void Index::remove(const Zettel* zettel) {
+    m_db->begin();
+    m_db->query("DELETE FROM zettel WHERE id = ?", sql::paramlist{(int)zettel->id()});
+    m_db->query("UPDATE reference SET valid = 0 WHERE dest = ?", sql::paramlist{(int)zettel->id()});
+    m_db->commit();
 }
 
 void Index::syncReferences(const Zettel* zettel) {

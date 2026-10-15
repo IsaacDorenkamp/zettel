@@ -54,6 +54,7 @@ public:
     std::vector<models::zettel> search(std::string tag);
     void insert(const Zettel* note);
     void update(const Zettel* note);
+    void remove(const Zettel* note);
 
     Zettel::Id nextId();
 private:

@@ -14,7 +14,7 @@ void sfree(void* memory) {
     free(memory);
 }
 
-SQLite::SQLite(const char* uri) : m_uri(uri), m_handle(nullptr), m_in_transaction(false), m_valid(true), m_locked(false) {
+SQLite::SQLite(const char* uri) : m_uri(uri), m_handle(nullptr), m_transaction_layers(0), m_valid(true), m_locked(false) {
     int status = sqlite3_open(uri, &m_handle);
     m_valid = status == SQLITE_OK;
     if (m_valid) sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
@@ -89,28 +89,46 @@ void SQLite::query(string query) {
 
 void SQLite::begin() {
     checkState();
-    if (m_in_transaction) throw SQLite::Exception("Already in transaction!");
+    int result;
     char* msg = nullptr;
-    int result = sqlite3_exec(m_handle, "BEGIN TRANSACTION;", nullptr, nullptr, &msg);
+    if (m_transaction_layers == 0) result = sqlite3_exec(m_handle, "BEGIN TRANSACTION", nullptr, nullptr, &msg);
+    else result = sqlite3_exec(m_handle, fmt("SAVEPOINT layer_%d", m_transaction_layers).c_str(), nullptr, nullptr, &msg);
     if (result != SQLITE_OK) {
         std::string errmsg(fmt("Could not begin transaction: %s", msg));
         sqlite3_free(msg);
         throw SQLite::Exception(errmsg);
     }
-    m_in_transaction = true;
+    m_transaction_layers++;
 }
 
-void SQLite::commit() {
+void SQLite::rollback() {
     checkState();
-    if (!m_in_transaction) throw SQLite::Exception("Not in transaction!");
+    if (m_transaction_layers == 0) throw SQLite::Exception("Not in transaction!");
+    int result;
     char* msg = nullptr;
-    int result = sqlite3_exec(m_handle, "COMMIT;", nullptr, nullptr, &msg);
+    if (m_transaction_layers == 1) result = sqlite3_exec(m_handle, "ROLLBACK", nullptr, nullptr, &msg);
+    else result = sqlite3_exec(m_handle, fmt("ROLLBACK TO SAVEPOINT layer_%d", m_transaction_layers - 1).c_str(), nullptr, nullptr, &msg);
     if (result != SQLITE_OK) {
         std::string errmsg(fmt("Could not commit transaction: %s", msg));
         sqlite3_free(msg);
         throw SQLite::Exception(errmsg);
     }
-    m_in_transaction = false;
+    m_transaction_layers--;
+}
+
+void SQLite::commit() {
+    checkState();
+    if (!m_transaction_layers) throw SQLite::Exception("Not in transaction!");
+    char* msg = nullptr;
+    int result;
+    if (m_transaction_layers == 1) result = sqlite3_exec(m_handle, "COMMIT", nullptr, nullptr, &msg);
+    else result = sqlite3_exec(m_handle, fmt("RELEASE SAVEPOINT layer_%d", m_transaction_layers - 1).c_str(), nullptr, nullptr, &msg);
+    if (result != SQLITE_OK) {
+        std::string errmsg(fmt("Could not commit transaction: %s", msg));
+        sqlite3_free(msg);
+        throw SQLite::Exception(errmsg);
+    }
+    m_transaction_layers--;
 }
 
 const string& SQLite::uri() const {

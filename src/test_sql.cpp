@@ -203,3 +203,23 @@ TEST_CASE("delete query", "[sql]") {
     int count = sql::one(result);
     REQUIRE(count == 0);
 }
+
+TEST_CASE("nested transactions", "[sql]") {
+    sql::SQLite db(":memory:");
+    db.query("CREATE TABLE test (a INT, b TEXT)");
+    db.query("INSERT INTO test (a, b) VALUES (1, \"hello\")");
+    db.begin();
+    db.query("INSERT INTO test (a, b) VALUES (2, \"hello2\")");
+    db.begin();
+    db.query("INSERT INTO test (a, b) VALUES (3, \"hello3\")");
+    db.begin();
+    db.query("INSERT INTO test (a, b) VALUES (4, \"hello4\")");
+    sql::SQLite::iterator<TestRow> result = db.query<TestRow>("SELECT a, b FROM test ORDER BY a DESC");
+    REQUIRE(sql::gather(result).size() == 4);
+    db.rollback();
+    sql::SQLite::iterator<TestRow> result2 = db.query<TestRow>("SELECT a, b FROM test ORDER BY a DESC");
+    REQUIRE(sql::gather(result2).size() == 3);
+    db.rollback();
+    sql::SQLite::iterator<TestRow> result3 = db.query<TestRow>("SELECT a, b FROM test ORDER BY a DESC");
+    REQUIRE(sql::gather(result3).size() == 2);
+}
