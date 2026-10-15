@@ -4,7 +4,7 @@
 
 #include "ansi.hpp"
 
-using std::map, std::pair, std::shared_ptr, std::string, std::unique_ptr, std::vector;
+using std::map, std::pair, std::shared_ptr, std::string, std::vector;
 
 log::StreamLogHandler::StreamLogHandler(std::ostream* stream, bool ansi) : m_stream(stream), m_ansi(ansi) {}
 void log::StreamLogHandler::handle(const log::LogRecord& record) {
