@@ -42,6 +42,7 @@ struct EditOptions {
 
 struct DeleteOptions {
     Zettel::Id id;
+    bool force;
 };
 
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);

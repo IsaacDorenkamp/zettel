@@ -50,7 +50,8 @@ public:
     void rollback();
 
     bool exists(const Zettel::Id& id);
-    std::set<Zettel::Id> getReferences(const Zettel::Id& id, bool validOnly = true);
+    std::set<Zettel::Id> getReferencesFor(const Zettel::Id& id, bool validOnly = true);
+    std::set<Zettel::Id> getReferencesTo(const Zettel::Id& id, bool validOnly = true);
 
     std::vector<models::zettel> search(std::string tag);
     void insert(const Zettel* note);

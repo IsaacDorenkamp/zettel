@@ -20,18 +20,15 @@ public:
             .dotdir = "",
             .db = m_db,
             .index = make_unique<Index>(m_db)
-        }), m_idx(m_ctx.index.get()), m_defaultHandler(), m_captureHandler(make_shared<logs::CaptureLogHandler>()) {
+        }), m_idx(m_ctx.index.get()), m_captureHandler(make_shared<logs::CaptureLogHandler>()) {
         cmd::initialize(m_ctx);
-        m_defaultHandler = logs::popHandler("default");
         logs::putHandler("capture", m_captureHandler);
     }
 
     virtual ~IndexFixture() {
-        logs::putHandler("default", std::move(m_defaultHandler));
         logs::popHandler("capture");
     }
 protected:
-    std::shared_ptr<logs::LogHandler> m_defaultHandler;
     std::shared_ptr<logs::CaptureLogHandler> m_captureHandler;
 
     std::shared_ptr<sql::SQLite> m_db;
@@ -64,7 +61,7 @@ TEST_CASE_METHOD(IndexFixture, "insert zettel with good reference", "[index]") {
     REQUIRE(m_idx->exists(0));
     REQUIRE(m_idx->exists(1));
 
-    set<Zettel::Id> refs = m_idx->getReferences(z2.id(), true);
+    set<Zettel::Id> refs = m_idx->getReferencesFor(z2.id(), true);
     REQUIRE(refs.size() == 1);
     REQUIRE(refs.find(0) != refs.end());
 
@@ -78,10 +75,10 @@ TEST_CASE_METHOD(IndexFixture, "insert zettel with bad reference", "[index]") {
     m_idx->insert(&z);
     REQUIRE(m_idx->exists(0));
 
-    set<Zettel::Id> goodRefs = m_idx->getReferences(z.id(), true);
+    set<Zettel::Id> goodRefs = m_idx->getReferencesFor(z.id(), true);
     REQUIRE(goodRefs.size() == 0);
 
-    set<Zettel::Id> allRefs = m_idx->getReferences(z.id(), false);
+    set<Zettel::Id> allRefs = m_idx->getReferencesFor(z.id(), false);
     REQUIRE(allRefs.size() == 1);
     REQUIRE(allRefs.find(1) != allRefs.end());
 
@@ -106,10 +103,10 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with bad reference to good referen
     REQUIRE(records[0].message.compare("Reference to non-existent note '100'") == 0);
 
     // ensure that there is an invalid reference
-    set<Zettel::Id> refs = m_idx->getReferences(z2.id(), true);
+    set<Zettel::Id> refs = m_idx->getReferencesFor(z2.id(), true);
     REQUIRE(refs.size() == 0);
 
-    set<Zettel::Id> allRefs = m_idx->getReferences(z2.id(), false);
+    set<Zettel::Id> allRefs = m_idx->getReferencesFor(z2.id(), false);
     REQUIRE(allRefs.size() == 1);
     REQUIRE(allRefs.find(100) != allRefs.end());
 
@@ -123,11 +120,11 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with bad reference to good referen
     vector<models::reference> mrefs = sql::gather(results);
 
     // ensure that there is a valid reference, and no invalid references
-    refs = m_idx->getReferences(z2.id(), true);
+    refs = m_idx->getReferencesFor(z2.id(), true);
     REQUIRE(refs.size() == 1);
     REQUIRE(refs.find(0) != refs.end());
 
-    refs = m_idx->getReferences(z2.id(), false);
+    refs = m_idx->getReferencesFor(z2.id(), false);
     REQUIRE(refs.size() == 1);
 }
 
@@ -140,11 +137,11 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with good reference to bad referen
     REQUIRE(m_idx->exists(1));
 
     // ensure that there is a valid reference, and no invalid references
-    set<Zettel::Id> refs = m_idx->getReferences(z2.id(), true);
+    set<Zettel::Id> refs = m_idx->getReferencesFor(z2.id(), true);
     REQUIRE(refs.size() == 1);
     REQUIRE(refs.find(0) != refs.end());
 
-    refs = m_idx->getReferences(z2.id(), false);
+    refs = m_idx->getReferencesFor(z2.id(), false);
     REQUIRE(refs.size() == 1);
 
     z2 = make_zettel("egress", "this is the egress point from the [ingress](zettel:100)", 1);
@@ -156,10 +153,10 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with good reference to bad referen
     REQUIRE(records[0].message.compare("Reference to non-existent note '100'") == 0);
 
     // ensure that there is an invalid reference
-    refs = m_idx->getReferences(z2.id(), true);
+    refs = m_idx->getReferencesFor(z2.id(), true);
     REQUIRE(refs.size() == 0);
 
-    set<Zettel::Id> allRefs = m_idx->getReferences(z2.id(), false);
+    set<Zettel::Id> allRefs = m_idx->getReferencesFor(z2.id(), false);
     REQUIRE(allRefs.size() == 1);
     REQUIRE(allRefs.find(100) != allRefs.end());
 }
@@ -185,7 +182,7 @@ TEST_CASE_METHOD(IndexFixture, "delete a Zettel", "[index]") {
     REQUIRE(m_idx->exists(0));
     REQUIRE(m_idx->exists(1));
 
-    set<Zettel::Id> refs = m_idx->getReferences(z2.id(), true);
+    set<Zettel::Id> refs = m_idx->getReferencesFor(z2.id(), true);
     REQUIRE(refs.size() == 1);
 
     m_idx->remove(&z1);

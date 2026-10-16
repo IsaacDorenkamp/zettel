@@ -1,6 +1,8 @@
 #include "commands.hpp"
 
+#include <memory>
 #include <sstream>
+#include <vector>
 
 #include "content.hpp"
 #include "editor.hpp"
@@ -13,7 +15,7 @@
 
 #define ZETTEL_VERSION "0.0.1"
 
-using std::make_unique, std::string, std::stringstream, std::unique_ptr, std::vector;
+using std::make_unique, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -45,10 +47,10 @@ void initialize(const Context& ctx) {
         try {
             db.begin();
             db.query("CREATE TABLE zettel (id INTEGER PRIMARY KEY, title TEXT NOT NULL)");
-            db.query("CREATE TABLE tag (zettel_id INTEGER NOT NULL, tag TEXT NOT NULL)");
+            db.query("CREATE TABLE tag (zettel_id INTEGER NOT NULL, tag TEXT NOT NULL, FOREIGN KEY(zettel_id) REFERENCES zettel(id) ON DELETE CASCADE)");
             db.query("CREATE UNIQUE INDEX zid_tag ON tag(zettel_id, tag)");
             // NOTE: dest does not reference "zettel" because it is allowed to fail to refer
-            db.query("CREATE TABLE reference (source INTEGER, dest INTEGER, valid INTEGER, FOREIGN KEY(source) REFERENCES zettel(id))");
+            db.query("CREATE TABLE reference (source INTEGER, dest INTEGER, valid INTEGER, FOREIGN KEY(source) REFERENCES zettel(id) ON DELETE CASCADE)");
             db.query("CREATE UNIQUE INDEX source_dest ON reference(source, dest)");
             db.commit();
         } catch (const sql::SQLite::Exception& exc) {
@@ -144,6 +146,20 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
 void remove(const Context& ctx, const DeleteOptions& options) {
     try {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
+
+        set<Zettel::Id> pointedToBy = ctx.index->getReferencesTo(z.id());
+        if (pointedToBy.size() > 0 && !options.force) {
+            stringstream ss("This Zettel is referenced by the following Zettels: ");
+            ss.seekp(0, std::ios_base::end);
+            bool first = true;
+            for (const Zettel::Id& id : pointedToBy) {
+                if (!first) ss << ", ";
+                else first = false;
+                ss << id;
+            }
+            throw CommandException(ss.str());
+        }
+
         ctx.index->begin();
         ctx.index->remove(&z);
         std::filesystem::remove(z.file());

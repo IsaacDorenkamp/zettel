@@ -4,6 +4,7 @@
 #include "argparse/argparse.hpp"
 #include "ansi.hpp"
 #include "commands.hpp"
+#include "logging.hpp"
 
 using namespace std;
 using namespace zettel;
@@ -21,6 +22,8 @@ std::filesystem::path get_root_path() {
 }
 
 int main(int argc, char **argv) {
+    logs::putHandler("default", make_shared<logs::StreamLogHandler>(&cout, true));
+
     argparse::ArgumentParser program("zettel");
     program.add_argument("--quiet", "-q").flag().help("Only outputs the minimal information requested for a command, with no visible success messages. Error messages are still printed to stderr.");
 
@@ -43,10 +46,15 @@ int main(int argc, char **argv) {
     argparse::ArgumentParser edit_cmd("edit");
     edit_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to edit.");
 
+    argparse::ArgumentParser delete_cmd("delete");
+    delete_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to delete.");
+    delete_cmd.add_argument("--force", "-f").flag().help("Guarantee the deletion of the Zettel, even if others refer to it.");
+
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
     program.add_subparser(search_cmd);
     program.add_subparser(edit_cmd);
+    program.add_subparser(delete_cmd);
 
     filesystem::path root = get_root_path();
     std::shared_ptr<sql::SQLite> db = make_shared<sql::SQLite>((root / ".zettel" / "struct.db").c_str());
@@ -100,10 +108,18 @@ int main(int argc, char **argv) {
             };
             unique_ptr<Zettel> zet = cmd::edit(ctx, opts);
             if (!quiet) cout << ansi::block("Updated ").italic(true) << ansi::block(zet->title()).bold(true) << endl;
+        } else if (program.is_subcommand_used("delete")) {
+            cmd::DeleteOptions opts{
+                delete_cmd.get<uint32_t>("id"),
+                delete_cmd.get<bool>("--force")
+            };
+            cmd::remove(ctx, opts);
+            if (!quiet) cout << ansi::block("Deleted ").foreground(ansi::Color::RED).bold(true) << "Zettel " <<
+                ansi::block(std::to_string(opts.id)).bold(true) << "" << endl;
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {
-        cerr << ansi::block("ERROR: ").foreground(ansi::Color::RED).bold(true) << exc.what() << endl;
+        cerr << ansi::block("ERROR ").foreground(ansi::Color::RED).bold(true) << exc.what() << endl;
         return EXIT_FAILURE;
     }
 

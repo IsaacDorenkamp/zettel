@@ -75,11 +75,19 @@ bool Index::exists(const Zettel::Id& id) {
     return (bool)sql::maybeone(rset);
 }
 
-set<Zettel::Id> Index::getReferences(const Zettel::Id& id, bool validOnly) {
+set<Zettel::Id> Index::getReferencesFor(const Zettel::Id& id, bool validOnly) {
     string query = fmt("SELECT source, dest, valid FROM reference WHERE source = ?%s", validOnly ? " AND valid > 0" : "");
     sql::SQLite::iterator<models::reference> rset = m_db->query<models::reference>(query, sql::paramlist{(int)id});
     set<Zettel::Id> ids;
     while (!rset.done()) ids.insert((rset++)->dest);
+    return ids;
+}
+
+set<Zettel::Id> Index::getReferencesTo(const Zettel::Id& id, bool validOnly) {
+    string query = fmt("SELECT source, dest, valid FROM reference WHERE dest = ?%s", validOnly ? " AND valid > 0" : "");
+    sql::SQLite::iterator<models::reference> rset = m_db->query<models::reference>(query, sql::paramlist{(int)id});
+    set<Zettel::Id> ids;
+    while (!rset.done()) ids.insert((rset++)->source);
     return ids;
 }
 
@@ -114,12 +122,13 @@ void Index::update(const Zettel* zettel) {
 
 void Index::remove(const Zettel* zettel) {
     m_db->begin();
-    m_db->query("DELETE FROM zettel WHERE id = ?", sql::paramlist{(int)zettel->id()});
+    // invalidate references to this Zettel
     sql::SQLite::iterator<models::reference> affected = m_db->query<models::reference>("UPDATE reference SET valid = 0 WHERE dest = ? RETURNING source, dest, valid", sql::paramlist{(int)zettel->id()});
     while (!affected.done()) {
         logs::warn("A reference from %u to %u is now invalid", affected->source, affected->dest);
         affected++;
     }
+    m_db->query("DELETE FROM zettel WHERE id = ?", sql::paramlist{(int)zettel->id()});
     m_db->commit();
 }
 
