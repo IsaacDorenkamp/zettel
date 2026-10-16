@@ -20,19 +20,19 @@ public:
             .dotdir = "",
             .db = m_db,
             .index = make_unique<Index>(m_db)
-        }), m_idx(m_ctx.index.get()), m_defaultHandler(), m_captureHandler(make_shared<log::CaptureLogHandler>()) {
+        }), m_idx(m_ctx.index.get()), m_defaultHandler(), m_captureHandler(make_shared<logs::CaptureLogHandler>()) {
         cmd::initialize(m_ctx);
-        m_defaultHandler = log::popHandler("default");
-        log::putHandler("capture", m_captureHandler);
+        m_defaultHandler = logs::popHandler("default");
+        logs::putHandler("capture", m_captureHandler);
     }
 
     virtual ~IndexFixture() {
-        log::putHandler("default", std::move(m_defaultHandler));
-        log::popHandler("capture");
+        logs::putHandler("default", std::move(m_defaultHandler));
+        logs::popHandler("capture");
     }
 protected:
-    std::shared_ptr<log::LogHandler> m_defaultHandler;
-    std::shared_ptr<log::CaptureLogHandler> m_captureHandler;
+    std::shared_ptr<logs::LogHandler> m_defaultHandler;
+    std::shared_ptr<logs::CaptureLogHandler> m_captureHandler;
 
     std::shared_ptr<sql::SQLite> m_db;
     cmd::Context m_ctx;
@@ -69,7 +69,7 @@ TEST_CASE_METHOD(IndexFixture, "insert zettel with good reference", "[index]") {
     REQUIRE(refs.find(0) != refs.end());
 
     // there should be no logged messages
-    const vector<log::LogRecord>& records = m_captureHandler->records();
+    const vector<logs::LogRecord>& records = m_captureHandler->records();
     REQUIRE(records.size() == 0);
 }
 
@@ -86,9 +86,9 @@ TEST_CASE_METHOD(IndexFixture, "insert zettel with bad reference", "[index]") {
     REQUIRE(allRefs.find(1) != allRefs.end());
 
     // ensure warning was logged
-    const vector<log::LogRecord>& records = m_captureHandler->records();
+    const vector<logs::LogRecord>& records = m_captureHandler->records();
     REQUIRE(records.size() == 1);
-    REQUIRE(records[0].level == log::WARNING);
+    REQUIRE(records[0].level == logs::WARNING);
     REQUIRE(records[0].message.compare("Reference to non-existent note '1'") == 0);
 }
 
@@ -100,9 +100,9 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with bad reference to good referen
     REQUIRE(m_idx->exists(0));
     REQUIRE(m_idx->exists(1));
 
-    const vector<log::LogRecord>& records = m_captureHandler->records();
+    const vector<logs::LogRecord>& records = m_captureHandler->records();
     REQUIRE(records.size() == 1);
-    REQUIRE(records[0].level == log::WARNING);
+    REQUIRE(records[0].level == logs::WARNING);
     REQUIRE(records[0].message.compare("Reference to non-existent note '100'") == 0);
 
     // ensure that there is an invalid reference
@@ -150,9 +150,9 @@ TEST_CASE_METHOD(IndexFixture, "update zettel with good reference to bad referen
     z2 = make_zettel("egress", "this is the egress point from the [ingress](zettel:100)", 1);
     m_idx->update(&z2);
 
-    const vector<log::LogRecord>& records = m_captureHandler->records();
+    const vector<logs::LogRecord>& records = m_captureHandler->records();
     REQUIRE(records.size() == 1);
-    REQUIRE(records[0].level == log::WARNING);
+    REQUIRE(records[0].level == logs::WARNING);
     REQUIRE(records[0].message.compare("Reference to non-existent note '100'") == 0);
 
     // ensure that there is an invalid reference
@@ -190,8 +190,8 @@ TEST_CASE_METHOD(IndexFixture, "delete a Zettel", "[index]") {
 
     m_idx->remove(&z1);
 
-    const vector<log::LogRecord>& records = m_captureHandler->records();
+    const vector<logs::LogRecord>& records = m_captureHandler->records();
     REQUIRE(records.size() == 1);
-    REQUIRE(records[0].level == log::WARNING);
+    REQUIRE(records[0].level == logs::WARNING);
     REQUIRE(records[0].message.compare("A reference from 1 to 0 is now invalid") == 0);
 }

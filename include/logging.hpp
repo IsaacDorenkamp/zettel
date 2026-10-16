@@ -2,10 +2,11 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "format.hpp"
 
-namespace log {
+namespace logs {
 
 enum Level {
     DEBUG,

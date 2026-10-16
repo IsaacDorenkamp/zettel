@@ -117,7 +117,7 @@ void Index::remove(const Zettel* zettel) {
     m_db->query("DELETE FROM zettel WHERE id = ?", sql::paramlist{(int)zettel->id()});
     sql::SQLite::iterator<models::reference> affected = m_db->query<models::reference>("UPDATE reference SET valid = 0 WHERE dest = ? RETURNING source, dest, valid", sql::paramlist{(int)zettel->id()});
     while (!affected.done()) {
-        log::warn("A reference from %u to %u is now invalid", affected->source, affected->dest);
+        logs::warn("A reference from %u to %u is now invalid", affected->source, affected->dest);
         affected++;
     }
     m_db->commit();
@@ -138,7 +138,7 @@ void Index::syncReferences(const Zettel* zettel) {
                     zid = stoul(uri.substr(7));
                     zettelRefs.insert(zid);
                 } catch (const std::exception& exc) {
-                    log::warn("Found reference to Zettel with invalid ID '%s'", uri.c_str());
+                    logs::warn("Found reference to Zettel with invalid ID '%s'", uri.c_str());
                 }
             }
         }
@@ -159,7 +159,7 @@ void Index::syncReferences(const Zettel* zettel) {
         sql::SQLite::iterator<models::reference> result = m_db->query<models::reference>("INSERT INTO reference (source, dest, valid) VALUES (:zid, :destid, (SELECT COUNT(id) FROM zettel WHERE id = :destid))"
                 "RETURNING source, dest, valid", sql::paramdict{ {"zid", (int)zettel->id()}, {"destid", (int)id} });
         models::reference ref = sql::one(result);
-        if (!ref.valid) log::warn("Reference to non-existent note '%u'", id);
+        if (!ref.valid) logs::warn("Reference to non-existent note '%u'", id);
     }
 }
 
