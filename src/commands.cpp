@@ -13,8 +13,6 @@
 #include "sql.hpp"
 #include "zettel.hpp"
 
-#define ZETTEL_VERSION "0.0.1"
-
 using std::make_unique, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
@@ -64,9 +62,8 @@ void initialize(const Context& ctx) {
 
 unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     std::string content;
-    std::filesystem::path dotdir = ctx.root / ".zettel";
     if (opts.edit) {
-        unique_ptr<Editor> ed = Editor::getInstance(dotdir);
+        unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
         try {
             content = ed->readInput();
         } catch (const zettel::Editor::Exception& exc) {
@@ -102,7 +99,6 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
 }
 
 vector<models::zettel> search(const Context& ctx, const SearchOptions& options) {
-    std::filesystem::path dotdir = ctx.root / ".zettel";
     try {
         return ctx.index->search(options.tag);
     } catch (const sql::SQLite::Exception& exc) {
@@ -110,11 +106,13 @@ vector<models::zettel> search(const Context& ctx, const SearchOptions& options) 
     }
 }
 
+#define ENSURE_EXISTS(ctx, id) if (!ctx.index->exists(id)) throw CommandException(fmt("No Zettel with ID %d", id))
+
 unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
-    std::filesystem::path dotdir = ctx.root / ".zettel";
+    ENSURE_EXISTS(ctx, options.id);
     try {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
-        unique_ptr<Editor> ed = Editor::getInstance(dotdir);
+        unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
         stringstream defaultContent;
         for (const unique_ptr<ContentBlock>& block : z.content()) {
             defaultContent << block->format(PLAINTEXT_FORMAT);
@@ -144,9 +142,9 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
 }
 
 void remove(const Context& ctx, const DeleteOptions& options) {
+    ENSURE_EXISTS(ctx, options.id);
     try {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
-
         set<Zettel::Id> pointedToBy = ctx.index->getReferencesTo(z.id());
         if (pointedToBy.size() > 0 && !options.force) {
             stringstream ss("This Zettel is referenced by the following Zettels: ");
@@ -171,6 +169,8 @@ void remove(const Context& ctx, const DeleteOptions& options) {
         throw CommandException(fmt("Error removing Zettel: %s", exc.what()));
     }
 }
+
+#undef ENSURE_EXISTS
 
 }
 

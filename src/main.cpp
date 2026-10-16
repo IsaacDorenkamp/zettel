@@ -24,7 +24,7 @@ std::filesystem::path get_root_path() {
 int main(int argc, char **argv) {
     logs::putHandler("default", make_shared<logs::StreamLogHandler>(&cout, true));
 
-    argparse::ArgumentParser program("zettel");
+    argparse::ArgumentParser program("zettel", ZETTEL_VERSION);
     program.add_argument("--quiet", "-q").flag().help("Only outputs the minimal information requested for a command, with no visible success messages. Error messages are still printed to stderr.");
 
     argparse::ArgumentParser init_cmd("init");

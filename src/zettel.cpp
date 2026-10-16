@@ -129,6 +129,7 @@ Zettel Zettel::load(const std::filesystem::path& path) {
     ifstream in;
     try {
         in.open(path);
+        if (!in.is_open()) throw ZettelException(fmt("Unable to read Zettel from '%s'", path.c_str()));
         std::string id_token;
         if (in >> id_token) {
             if (id_token.size() < 2) {
