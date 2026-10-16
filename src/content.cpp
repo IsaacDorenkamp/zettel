@@ -55,7 +55,7 @@ void ReferenceBlock::setText(const optional<string>& text) { m_text = text; }
 const optional<string>& ReferenceBlock::text() const { return m_text; }
 
 unique_ptr<ContentBlock> ReferenceBlock::clone() const {
-    return unique_ptr<ContentBlock>(new ReferenceBlock(m_id, m_uri));
+    return unique_ptr<ContentBlock>(new ReferenceBlock(m_id, m_uri, m_text));
 }
 string ReferenceBlock::format(const FormatOptions& options) const {
     if (m_text) {

@@ -12,6 +12,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    add_definitions(-DNDEBUG)
+endif()
+
 # Dependencies
 include(FetchContent)
 FetchContent_Declare(
@@ -63,10 +67,15 @@ include_directories("include")
 
 if (WIN32)
     add_executable(zettel WIN32 ${SOURCES})
-    add_executable(test   WIN32 ${TEST_SOURCES})
+    if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        add_executable(test   WIN32 ${TEST_SOURCES})
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain)
+    endif()
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
-    add_executable(test   ${TEST_SOURCES})
+    if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        add_executable(test   ${TEST_SOURCES})
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain)
+    endif()
 endif()
 target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3)
-target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain)

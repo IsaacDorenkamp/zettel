@@ -166,9 +166,9 @@ void Index::syncReferences(const Zettel* zettel) {
     m_db->query(query.str(), sql::paramvec<int>{params});
     for (const Zettel::Id& id : zettelRefs) {
         sql::SQLite::iterator<models::reference> result = m_db->query<models::reference>("INSERT INTO reference (source, dest, valid) VALUES (:zid, :destid, (SELECT COUNT(id) FROM zettel WHERE id = :destid))"
-                "RETURNING source, dest, valid", sql::paramdict{ {"zid", (int)zettel->id()}, {"destid", (int)id} });
-        models::reference ref = sql::one(result);
-        if (!ref.valid) logs::warn("Reference to non-existent note '%u'", id);
+                " ON CONFLICT DO NOTHING RETURNING source, dest, valid", sql::paramdict{ {"zid", (int)zettel->id()}, {"destid", (int)id} });
+        optional<models::reference> ref = sql::maybeone(result);
+        if (ref && !ref->valid) logs::warn("Reference to non-existent note '%u'", id);
     }
 }
 
