@@ -41,7 +41,7 @@ unique_ptr<ContentBlock> DefaultParser::next() {
     unique_ptr<ContentBlock> content;
 
     if (m_bufferIndex == m_bufferSize) loadNextBlock();
-    if (m_done) return nullptr;
+    if (m_done) return unique_ptr<ContentBlock>(new TextBlock(nextId(), ""));
 
     char first = m_buffer[m_bufferIndex];
     bool escape = false;

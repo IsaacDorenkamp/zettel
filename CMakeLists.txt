@@ -51,6 +51,8 @@ set(COMMON_SOURCES
     "src/zettel.cpp"
     "src/sql.cpp"
     "src/parser.cpp"
+    "src/viewer.cpp"
+    "src/tui.cpp"
 )
 set(SOURCES
     ${COMMON_SOURCES}
@@ -61,6 +63,7 @@ set(TEST_SOURCES
     "src/test_index.cpp"
     "src/test_sql.cpp"
     "src/test_parser.cpp"
+    "src/test_tui.cpp"
 )
 
 include_directories("include")
@@ -69,13 +72,13 @@ if (WIN32)
     add_executable(zettel WIN32 ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   WIN32 ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain)
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses)
     endif()
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain)
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses)
     endif()
 endif()
-target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3)
+target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3 ncurses)

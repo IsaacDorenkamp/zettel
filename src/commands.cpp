@@ -11,6 +11,8 @@
 #include "meta.hpp"
 #include "parser.hpp"
 #include "sql.hpp"
+#include "tui.hpp"
+#include "viewer.hpp"
 #include "zettel.hpp"
 
 using std::make_unique, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
@@ -112,18 +114,22 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
     ENSURE_EXISTS(ctx, options.id);
     try {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
-        unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
-        stringstream defaultContent;
-        for (const unique_ptr<ContentBlock>& block : z.content()) {
-            defaultContent << block->format(PLAINTEXT_FORMAT);
-        }
-        string updatedContent = ed->readInput(defaultContent.str());
-        z.clearContent();
+        if (options.title) z.setTitle(*options.title);
 
-        stringstream rawContent(updatedContent);
-        rawContent.seekg(0);
-        unique_ptr<Parser> p(new DefaultParser(rawContent));
-        while (!p->done()) z.addContentBlock(p->next());
+        if (!options.detailsOnly) {
+            unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
+            stringstream defaultContent;
+            for (const unique_ptr<ContentBlock>& block : z.content()) {
+                defaultContent << block->format(PLAINTEXT_FORMAT);
+            }
+            string updatedContent = ed->readInput(defaultContent.str());
+            z.clearContent();
+
+            stringstream rawContent(updatedContent);
+            rawContent.seekg(0);
+            unique_ptr<Parser> p(new DefaultParser(rawContent));
+            while (!p->done()) z.addContentBlock(p->next());
+        }
 
         ctx.index->begin();
         ctx.index->update(&z);
@@ -167,6 +173,17 @@ void remove(const Context& ctx, const DeleteOptions& options) {
     } catch (const sql::SQLite::Exception& exc) {
         ctx.index->rollback();
         throw CommandException(fmt("Error removing Zettel: %s", exc.what()));
+    }
+}
+
+void view(const Context& ctx, const ViewOptions& options) {
+    ENSURE_EXISTS(ctx, options.id);
+    try {
+        Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
+        Viewer v(&z);
+        tui::run_curses(std::bind(&Viewer::run, &v));
+    } catch (const zettel::ZettelException& exc) {
+        throw CommandException(fmt("Could not view Zettel %u: %s", options.id, exc.what()));
     }
 }
 

@@ -40,6 +40,8 @@ struct SearchOptions {
 
 struct EditOptions {
     Zettel::Id id;
+    std::optional<std::string> title;
+    bool detailsOnly;
 };
 
 struct DeleteOptions {
@@ -47,10 +49,16 @@ struct DeleteOptions {
     bool force;
 };
 
+struct ViewOptions {
+    Zettel::Id id;
+    bool ansi;
+};
+
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
 std::vector<models::zettel> search(const Context& ctx, const SearchOptions& options);
 std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
 void remove(const Context& ctx, const DeleteOptions& options);
+void view(const Context& ctx, const ViewOptions& options);
 
 }
 

@@ -45,16 +45,22 @@ int main(int argc, char **argv) {
 
     argparse::ArgumentParser edit_cmd("edit");
     edit_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to edit.");
+    edit_cmd.add_argument("--title").help("The new title for this Zettel.");
+    edit_cmd.add_argument("--details-only").flag().help("Do not update the body of the Zettel, only its details (e.g. title).");
 
     argparse::ArgumentParser delete_cmd("delete");
     delete_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to delete.");
     delete_cmd.add_argument("--force", "-f").flag().help("Guarantee the deletion of the Zettel, even if others refer to it.");
+
+    argparse::ArgumentParser view_cmd("view");
+    view_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to view.");
 
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
     program.add_subparser(search_cmd);
     program.add_subparser(edit_cmd);
     program.add_subparser(delete_cmd);
+    program.add_subparser(view_cmd);
 
     filesystem::path root = get_root_path();
     std::shared_ptr<sql::SQLite> db = make_shared<sql::SQLite>((root / ".zettel" / "struct.db").c_str());
@@ -104,7 +110,9 @@ int main(int argc, char **argv) {
                 << ansi::block(" result" + string(results.size() != 1 ? "s" : "")).italic(true) << endl;
         } else if (program.is_subcommand_used("edit")) {
             cmd::EditOptions opts{
-                edit_cmd.get<uint32_t>("id")
+                edit_cmd.get<uint32_t>("id"),
+                edit_cmd.present<string>("title"),
+                edit_cmd.get<bool>("--details-only")
             };
             unique_ptr<Zettel> zet = cmd::edit(ctx, opts);
             if (!quiet) cout << ansi::block("Updated ").italic(true) << ansi::block(zet->title()).bold(true) << endl;
@@ -116,6 +124,12 @@ int main(int argc, char **argv) {
             cmd::remove(ctx, opts);
             if (!quiet) cout << ansi::block("Deleted ").foreground(ansi::Color::RED).bold(true) << "Zettel " <<
                 ansi::block(std::to_string(opts.id)).bold(true) << "" << endl;
+        } else if (program.is_subcommand_used("view")) {
+            cmd::ViewOptions opts{
+                view_cmd.get<uint32_t>("id"),
+                true
+            };
+            cmd::view(ctx, opts);
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {
