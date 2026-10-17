@@ -92,6 +92,10 @@ const path& Zettel::file() const {
     return m_path;
 }
 
+string Zettel::getFilenameForId(const Zettel::Id& id) {
+    return fmt("%u.txt", id);
+}
+
 void Zettel::save() {
     ofstream out;
     try {

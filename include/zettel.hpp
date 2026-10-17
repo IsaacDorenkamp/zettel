@@ -51,6 +51,8 @@ public:
 
     const std::filesystem::path& file() const;
 
+    static std::string getFilenameForId(const Zettel::Id& id);
+
     void save();
 
     static Zettel load(const std::filesystem::path& file);

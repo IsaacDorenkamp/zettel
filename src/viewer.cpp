@@ -1,11 +1,16 @@
 #include "viewer.hpp"
 
 #include <curses.h>
+#include <stdexcept>
 
+#include "commands.hpp"
 #include "content.hpp"
 #include "format.hpp"
+#include "uri.hpp"
+#include "zettel.hpp"
 
 using std::string, std::unique_ptr;
+using zettel::cmd::Context;
 
 namespace zettel {
 
@@ -13,6 +18,7 @@ Viewer::Viewer(const Zettel* zettel) : m_zettel(zettel), m_screen(), m_links(), 
 void Viewer::configure() {
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_BLACK, COLOR_BLUE);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
     curs_set(0);
 }
 void Viewer::setZettel(const Zettel* zettel) {
@@ -93,12 +99,61 @@ void Viewer::run() {
             drawKeyBinds();
             refresh();
             break;
+        case '\n':
+            // TODO: pass Context into run, call open() on selected link
+            break;
         }
     }
 }
 
-void Viewer::open(const ReferenceBlock* ref) {
-    // TODO: implement
+void Viewer::error(string message) {
+    move(m_screen.rows - 2, 0);
+    attron(COLOR_PAIR(3) | A_BOLD);
+    addstr("ERROR ");
+    attroff(COLOR_PAIR(3) | A_BOLD);
+    addstr(message.substr(0, m_screen.cols - 6).c_str());
+}
+
+void Viewer::open(const Context& ctx, const ReferenceBlock* ref) {
+    try {
+        URI uri = URI::parse(ref->uri());
+        if (uri.scheme().compare("zettel") == 0) {
+            if (uri.authority().has_value()) {
+                error("Zettel URI should not have an authority.");
+                return;
+            }
+            if (uri.query().has_value()) {
+                error("Zettel URI should not have a query string.");
+                return;
+            }
+            // NOTE: May add support for fragments in the future.
+            if (uri.fragment().has_value()) {
+                error("Zettel URI should not have a fragment.");
+                return;
+            }
+            unsigned long id;
+            try {
+                id = std::stoul(uri.path());
+                if (id > 0xFFFFFFFF) throw std::out_of_range(fmt("%lu exceeds 0xFFFFFFFF", id));
+            } catch (const std::invalid_argument& exc) {
+                error(fmt("Invalid Zettel ID: %s", exc.what()));
+                return;
+            } catch (const std::out_of_range& exc) {
+                error(fmt("Zettel ID out of range: %s", exc.what()));
+                return;
+            }
+            string filename = Zettel::getFilenameForId((uint32_t)id);
+            std::filesystem::path zettelPath = ctx.root / filename;
+            Zettel z = Zettel::load(zettelPath);
+            chainPush(&z);
+        } else {
+            // TODO: defer to the user's machine
+        }
+    } catch (const URI::Exception& exc) {
+        error(exc.what());
+    } catch (const ZettelException& exc) {
+        error(fmt("Couldn't load Zettel: %s", exc.what()));
+    }
 }
 
 void Viewer::deselectCurrentLink() {
