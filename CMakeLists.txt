@@ -51,8 +51,9 @@ set(COMMON_SOURCES
     "src/zettel.cpp"
     "src/sql.cpp"
     "src/parser.cpp"
-    "src/viewer.cpp"
     "src/tui.cpp"
+    "src/uri.cpp"
+    "src/viewer.cpp"
 )
 set(SOURCES
     ${COMMON_SOURCES}
@@ -64,6 +65,7 @@ set(TEST_SOURCES
     "src/test_sql.cpp"
     "src/test_parser.cpp"
     "src/test_tui.cpp"
+    "src/test_uri.cpp"
 )
 
 include_directories("include")
