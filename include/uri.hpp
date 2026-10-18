@@ -12,6 +12,7 @@ public:
 
     URI(const std::string& scheme, const std::optional<std::string>& authority, const std::string& path, const std::optional<std::string>& query,
             const std::optional<std::string>& fragment);
+    URI();
 
     const std::string& scheme() const;
     const std::optional<std::string>& authority() const;

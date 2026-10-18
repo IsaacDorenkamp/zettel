@@ -1,8 +1,7 @@
 #include "tui.hpp"
 
 #include <curses.h>
-
-using std::function;
+#include <algorithm>
 
 namespace tui {
 
@@ -25,22 +24,6 @@ pos pos::move(const screen& scr, int amount) const {
 
 bool pos::operator==(const pos& other) const {
     return x == other.x && y == other.y;
-}
-
-void run_curses(function<void()> app) {
-    initscr();
-    noecho();
-    cbreak();
-    start_color();
-    keypad(stdscr, true);
-
-    try {
-        app();
-    } catch (const std::exception& exc) {
-        /* ignore any errors */
-    }
-
-    endwin();
 }
 
 }

@@ -1,6 +1,8 @@
 #pragma once
 
-#include <functional>
+#include <curses.h>
+#include <exception>
+#include <type_traits>
 
 namespace tui {
 
@@ -27,6 +29,22 @@ struct range {
     pos end;
 };
 
-void run_curses(std::function<void()> app);
+
+template <class Fn, std::enable_if_t<std::is_invocable<Fn>::value, bool> = true>
+void run_curses(const Fn& app) {
+    initscr();
+    noecho();
+    cbreak();
+    start_color();
+    keypad(stdscr, true);
+
+    try {
+        app();
+    } catch (const std::exception& exc) {
+        /* ignore any errors */
+    }
+
+    endwin();
+}
 
 }

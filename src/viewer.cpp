@@ -23,6 +23,8 @@ void Viewer::configure() {
 }
 void Viewer::setZettel(const Zettel* zettel) {
     m_zettel = zettel;
+    m_links.clear();
+    m_link = -1;
 
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
@@ -49,10 +51,19 @@ void Viewer::setZettel(const Zettel* zettel) {
             displayText = ref->text().value_or(ref->uri());
             getyx(stdscr, y, x);
             tui::pos here{y, x};
-            m_links.push_back({ref->uri(), tui::range{ here, here.move(m_screen, displayText.size()) }});
-            attron(A_UNDERLINE | COLOR_PAIR(1));
+            int attr = A_UNDERLINE;
+            tui::range trange{ here, here.move(m_screen, displayText.size()) };
+            try {
+                URI uri = URI::parse(ref->uri());
+                m_links.push_back({uri, trange});
+                attr |= COLOR_PAIR(1);
+            } catch (const URI::Exception& exc) {
+                m_links.push_back({URI(), trange});
+                attr |= COLOR_PAIR(3);
+            }
+            attron(attr);
             err = printw("%s", displayText.c_str());
-            attroff(A_UNDERLINE | COLOR_PAIR(1));
+            attroff(attr);
         } else {
             err = printw("%s", block->format(PLAINTEXT_FORMAT).c_str());
         }
@@ -64,26 +75,26 @@ void Viewer::setZettel(const Zettel* zettel) {
 
 void Viewer::chainPush(const Zettel* zettel) {
     m_chain.push_back(zettel->id());
+    m_cache.insert({ zettel->id(), *zettel });
     setZettel(zettel);
     drawKeyBinds();
-    m_cache.insert({ zettel->id(), *zettel });
+    drawTrail();
 }
 
 void Viewer::chainPop() {
-    if (m_chain.size() > 0) {
+    if (m_chain.size() > 1) {
         m_chain.pop_back();
-        if (m_chain.size() > 0) setZettel(&m_cache.at(m_chain.back()));
-        else {
-            clear();
-            drawKeyBinds();
-        }
+        setZettel(&m_cache.at(m_chain.back()));
+        drawKeyBinds();
+        drawTrail();
     }
 }
 
-void Viewer::run() {
+void Viewer::run(const Context& ctx) {
     configure();
-    setZettel(m_zettel);
+    chainPush(m_zettel);
     drawKeyBinds();
+    drawTrail();
 
     int ch;
     bool running = true;
@@ -93,14 +104,21 @@ void Viewer::run() {
         case 'k':
             nextLink();
             drawKeyBinds();
+            refresh();
             break;
         case 'K':
             deselectCurrentLink();
             drawKeyBinds();
             refresh();
             break;
+        case 'b':
+            chainPop();
+            refresh();
         case '\n':
-            // TODO: pass Context into run, call open() on selected link
+            if (m_link >= 0) {
+                URI uri = m_links[m_link].first;
+                open(ctx, uri);
+            }
             break;
         }
     }
@@ -114,45 +132,42 @@ void Viewer::error(string message) {
     addstr(message.substr(0, m_screen.cols - 6).c_str());
 }
 
-void Viewer::open(const Context& ctx, const ReferenceBlock* ref) {
-    try {
-        URI uri = URI::parse(ref->uri());
-        if (uri.scheme().compare("zettel") == 0) {
-            if (uri.authority().has_value()) {
-                error("Zettel URI should not have an authority.");
-                return;
-            }
-            if (uri.query().has_value()) {
-                error("Zettel URI should not have a query string.");
-                return;
-            }
-            // NOTE: May add support for fragments in the future.
-            if (uri.fragment().has_value()) {
-                error("Zettel URI should not have a fragment.");
-                return;
-            }
-            unsigned long id;
-            try {
-                id = std::stoul(uri.path());
-                if (id > 0xFFFFFFFF) throw std::out_of_range(fmt("%lu exceeds 0xFFFFFFFF", id));
-            } catch (const std::invalid_argument& exc) {
-                error(fmt("Invalid Zettel ID: %s", exc.what()));
-                return;
-            } catch (const std::out_of_range& exc) {
-                error(fmt("Zettel ID out of range: %s", exc.what()));
-                return;
-            }
-            string filename = Zettel::getFilenameForId((uint32_t)id);
-            std::filesystem::path zettelPath = ctx.root / filename;
+void Viewer::open(const Context& ctx, const URI& uri) {
+    if (uri.scheme().compare("zettel") == 0) {
+        if (uri.authority().has_value()) {
+            error("Zettel URI should not have an authority.");
+            return;
+        }
+        if (uri.query().has_value()) {
+            error("Zettel URI should not have a query string.");
+            return;
+        }
+        // NOTE: May add support for fragments in the future.
+        if (uri.fragment().has_value()) {
+            error("Zettel URI should not have a fragment.");
+            return;
+        }
+        unsigned long id;
+        try {
+            id = std::stoul(uri.path());
+            if (id > 0xFFFFFFFF) throw std::out_of_range(fmt("%lu exceeds 0xFFFFFFFF", id));
+        } catch (const std::invalid_argument& exc) {
+            error(fmt("Invalid Zettel ID: %s", uri.path().c_str()));
+            return;
+        } catch (const std::out_of_range& exc) {
+            error(fmt("Zettel ID out of range: %s", exc.what()));
+            return;
+        }
+        string filename = Zettel::getFilenameForId((uint32_t)id);
+        std::filesystem::path zettelPath = ctx.root / filename;
+        try {
             Zettel z = Zettel::load(zettelPath);
             chainPush(&z);
-        } else {
-            // TODO: defer to the user's machine
+        } catch (const ZettelException& exc) {
+            error(fmt("Couldn't load Zettel: %s", exc.what()));
         }
-    } catch (const URI::Exception& exc) {
-        error(exc.what());
-    } catch (const ZettelException& exc) {
-        error(fmt("Couldn't load Zettel: %s", exc.what()));
+    } else {
+        // TODO: defer to the user's machine
     }
 }
 
@@ -160,7 +175,6 @@ void Viewer::deselectCurrentLink() {
     int pos, index;
     tui::pos scrpos{0, 0};
     if (m_link != -1) {
-        string uri = m_links[m_link].first;
         tui::range current = m_links[m_link].second;
         move(current.start.y, current.start.x);
         attron(COLOR_PAIR(1) | A_BOLD);
@@ -193,16 +207,33 @@ void Viewer::nextLink() {
     attroff(COLOR_PAIR(2));
 }
 
+void Viewer::drawTrail() {
+    move(0, 1);
+    // TODO: What if this gets too long?
+    Zettel::Id id;
+    const Zettel* z;
+    for (size_t index = 0; index < m_chain.size(); index++) {
+        id = m_chain[index];
+        z = &m_cache.at(id);
+        if (index > 0) addstr(" > ");
+        attron(A_ITALIC);
+        addstr(z->title().c_str());
+        attroff(A_ITALIC);
+    }
+}
+
 void Viewer::drawKeyBinds() {
-    move(m_screen.rows - 1, 0);
+    move(m_screen.rows - 1, 1);
     clrtoeol();
-    addstr(" ");
     if (m_links.size() == 0) attron(A_DIM);
-    addstr("k -> next link");
+    addstr("k [next link]");
     attroff(A_DIM);
     addstr("   ");
     if (m_link < 0) attron(A_DIM);
     addstr("K [deselect link]   <Return> [follow link]");
+    attroff(A_DIM);
+    if (m_chain.size() <= 1) attron(A_DIM);
+    addstr("   b [go to previous zettel]");
     attroff(A_DIM);
     addstr("   ^C [quit]");
 }

@@ -30,8 +30,18 @@ TEST_CASE("path with single leading slash is not interpreted as authority", "[ur
     REQUIRE(u.path().compare("/path") == 0);
 }
 
+TEST_CASE("typical zettel URI", "[uri]") {
+    URI u = URI::parse("zettel:1");
+    REQUIRE(u.scheme().compare("zettel") == 0);
+    REQUIRE(u.path().compare("1") == 0);
+}
+
 TEST_CASE("edge case - empty authority", "[uri]") {
     URI u = URI::parse("scheme://");
     REQUIRE(u.scheme().compare("scheme") == 0);
     REQUIRE((u.authority().has_value() && u.authority()->empty()));
+}
+
+TEST_CASE("empty string throws URI::Exception", "[uri]") {
+    REQUIRE_THROWS_AS(URI::parse(""), URI::Exception);
 }

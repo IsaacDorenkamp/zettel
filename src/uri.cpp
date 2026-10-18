@@ -7,7 +7,10 @@ using std::optional, std::string, std::stringstream;
 namespace zettel {
 
 URI::URI(const string& scheme, const optional<string>& authority, const string& path, const optional<string>& query, const optional<string>& fragment)
-    : m_scheme(scheme), m_authority(authority), m_path(path), m_query(query), m_fragment(fragment), m_repr() {}
+    : m_scheme(scheme), m_authority(authority), m_path(path), m_query(query), m_fragment(fragment), m_repr() {
+    updateRepr();
+}
+URI::URI() : URI("", std::nullopt, "", std::nullopt, std::nullopt) {}
 
 const string& URI::scheme() const { return m_scheme; }
 const optional<string>& URI::authority() const { return m_authority; }
@@ -59,7 +62,8 @@ URI URI::parse(string uri) {
 
     optional<string> authority = std::nullopt;
     if (it == end) return URI(scheme, std::nullopt, "", std::nullopt, std::nullopt);
-    if (*it++ == '/') {
+    if (*it == '/') {
+        it++;
         if (it == end) return URI(scheme, std::nullopt, "/", std::nullopt, std::nullopt);
         if (*it == '/') {
             it++;

@@ -5,7 +5,7 @@
 using namespace tui;
 
 TEST_CASE("pos::move", "[tui]") {
-    screen s{20, 20};
+    tui::screen s{20, 20};
     pos p{0, 0};
     REQUIRE(p.move(s, 5) == pos{0, 5});
     REQUIRE(p.move(s, 25) == pos{1, 5});
