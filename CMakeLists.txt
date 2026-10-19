@@ -51,6 +51,7 @@ set(COMMON_SOURCES
     "src/zettel.cpp"
     "src/sql.cpp"
     "src/parser.cpp"
+    "src/sys.cpp"
     "src/tui.cpp"
     "src/uri.cpp"
     "src/viewer.cpp"

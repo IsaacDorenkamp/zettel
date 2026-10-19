@@ -8,8 +8,9 @@
 
 #include "format.hpp"
 #include "io.hpp"
+#include "sys.hpp"
 
-using std::filesystem::path, std::ifstream, std::ofstream, std::map, std::optional, std::string, std::unique_ptr;
+using std::filesystem::path, std::ifstream, std::ofstream, std::map, std::optional, std::string, std::unique_ptr, std::vector;
 
 extern char **environ;
 
@@ -36,69 +37,33 @@ string TerminalEditor::readInput(optional<string> defaultText) {
         throw Editor::Exception(fmt("Unable to truncate %s", toEdit.c_str()));
     }
 
-    pid_t pid = fork();
+    // FIXME: something breaking here
+    vector<string> args(m_args);
+    /*
+    for (vector<string>::iterator it = args.begin(); it != args.end(); it++) {
+        //if (it->compare("<filename>") == 0) *it = toEdit.string();
+    }
+    */
+    args.insert(args.begin(), m_executable);
 
-    if (pid == 0) {
-        // we are the child
-        char** args = new char*[m_args.size() + 2];
-        size_t index;
-        std::string arg;
-        args[0] = strdup(m_executable.c_str());
-        for (index = 0; index < m_args.size(); index++) {
-            arg = m_args[index];
-            if (arg.compare("<filename>") == 0) {
-                args[index + 1] = strdup(toEdit.c_str());
+    try {
+        sys::ExitResult result = sys::runcmd(m_executable, args, m_env);
+        if (result.status == 0) {
+            optional<string> content = io::readfile(toEdit);
+            if (content) {
+                // strip trailing newline
+                if (content->size() > 0 && content->back() == '\n') content = content->substr(0, content->size() - 1);
+                return *content;
             } else {
-                args[index + 1] = strdup(m_args[index].c_str());
+                throw Editor::Exception("Could not read the editor file!");
             }
-        }
-        args[m_args.size() + 1] = NULL;
-        map<string, string> totalEnv(m_env);
-        size_t nameSize;
-        string name;
-        for (char** environVar = environ; *environVar != NULL; environVar++) {
-            char* eq = strchr(*environVar, '=');
-            if (eq == NULL) continue;
-            nameSize = (size_t)(eq - *environVar);
-            name = string(*environVar, nameSize);
-            totalEnv.insert({ name, eq + 1 });
-        }
-        char** env = new char*[totalEnv.size() + 1];
-        Env::const_iterator entry = totalEnv.cbegin();
-        string line;
-        for (index = 0; entry != totalEnv.cend(); entry++, index++) {
-            line = fmt("%s=%s", entry->first.c_str(), entry->second.c_str());
-            env[index] = strdup(line.data());
-        }
-        env[totalEnv.size()] = nullptr;
-        execve(m_executable.c_str(), (char* const*)args, (char* const*)env);
-        exit(EXIT_FAILURE);
-    } else if (pid == -1) {
-        // something went wrong
-        throw Editor::Exception("Unable to start editor.");
-    } else {
-        // we are the parent
-        int status;
-        pid_t finished = waitpid(pid, &status, 0);
-        if (WIFEXITED(status)) {
-            int actualStatus = WEXITSTATUS(status);
-            if (actualStatus == 0) {
-                optional<string> content = io::readfile(toEdit);
-                if (content) {
-                    if (content->size() > 0 && content->back() == '\n') content = content->substr(0, content->size() - 1);
-                    return *content;
-                } else {
-                    throw Editor::Exception("Could not read the edited file!");
-                }
-            } else {
-                throw Editor::Exception(fmt("Editor exited with status %d", actualStatus));
-            }
-        } else if (WIFSIGNALED(status)) {
-            // TODO: nice signal names?
-            throw Editor::Exception(fmt("Editor was terminated by a signal: %d", WTERMSIG(status)));
+        } else if (result.status > 0) {
+            throw Editor::Exception("An error occurred while editing.");
         } else {
-            throw Editor::Exception("Unable to start editor.");
+            throw Editor::Exception("The editor was terminated via a signal.");
         }
+    } catch (const sys::SysException& exc) {
+        throw Editor::Exception(fmt("Unable to start editor: %s", exc.what()));
     }
 }
 
