@@ -4,8 +4,8 @@
 #include <memory>
 
 #include "content.hpp"
-
 #include "exception.hpp"
+
 #define PARSER_BUFFER_SIZE 1024
 
 namespace zettel {

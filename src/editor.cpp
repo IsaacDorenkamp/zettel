@@ -3,8 +3,6 @@
 #include <fstream>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <stdio.h>
-#include <string.h>
 
 #include "format.hpp"
 #include "io.hpp"
@@ -37,15 +35,10 @@ string TerminalEditor::readInput(optional<string> defaultText) {
         throw Editor::Exception(fmt("Unable to truncate %s", toEdit.c_str()));
     }
 
-    // FIXME: something breaking here
     vector<string> args(m_args);
-    /*
     for (vector<string>::iterator it = args.begin(); it != args.end(); it++) {
-        //if (it->compare("<filename>") == 0) *it = toEdit.string();
+        if (it->compare("<filename>") == 0) *it = toEdit.string();
     }
-    */
-    args.insert(args.begin(), m_executable);
-
     try {
         sys::ExitResult result = sys::runcmd(m_executable, args, m_env);
         if (result.status == 0) {

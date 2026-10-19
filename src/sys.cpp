@@ -10,6 +10,8 @@
 using std::map, std::string, std::vector;
 using zettel::fmt, zettel::URI;
 
+extern char** environ;
+
 namespace sys {
 
 SysException::SysException(SysErrReason reason) : m_reason(reason) {}
@@ -21,7 +23,7 @@ const char* SysException::what() const throw() {
     return "";
 }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 
 ExitResult runcmd(const string& executable, const vector<string>& args, const map<string, string>& env) {
     pid_t pid = fork();
