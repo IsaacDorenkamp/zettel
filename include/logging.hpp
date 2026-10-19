@@ -50,8 +50,12 @@ void log(const LogRecord& record);
 
 template <typename... Args>
 void logf(Level level, std::string format, Args&&... args) {
-    std::string message = zettel::fmt(format, std::forward<decltype(args)>(args)...);
-    log(LogRecord{ level, message });
+    if constexpr (sizeof...(args) == 0) {
+        log(LogRecord{ level, format });
+    } else {
+        std::string message = zettel::fmt(format, std::forward<decltype(args)>(args)...);
+        log(LogRecord{ level, message });
+    }
 }
 
 #define LOG_WRAPPER(fn_name, log_level) template <typename... Args>\

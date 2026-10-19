@@ -3,19 +3,10 @@
 #include <fstream>
 #include <sstream>
 
+#include "exception.hpp"
+#include "format.hpp"
+
 using std::map, std::pair, std::string, std::stringstream;
-
-namespace zettel {
-
-namespace meta {
-
-void write(std::filesystem::path dest, std::map<std::string, std::string> data) {
-    using std::endl, std::ofstream;
-    ofstream metafile(dest);
-    for (const pair<const string, string>& entry : data) {
-        metafile << entry.first << ' ' << entry.second << endl;
-    }
-}
 
 static pair<string, string> _parseline(const string& line) {
     stringstream stream;
@@ -35,11 +26,28 @@ static pair<string, string> _parseline(const string& line) {
     return { key, stream.str() };
 }
 
+namespace zettel {
+
+namespace meta {
+
+DEFINE_EXCEPTION;
+
+void write(std::filesystem::path dest, std::map<std::string, std::string> data) {
+    using std::endl, std::ofstream;
+    ofstream metafile(dest);
+    for (const pair<const string, string>& entry : data) {
+        metafile << entry.first << ' ' << entry.second << endl;
+    }
+}
+
 map<string, string> read(std::filesystem::path source) {
     using std::ifstream, std::stringstream;
     stringstream line;
     char buf[1024];
     ifstream metafile(source);
+    if (!metafile.is_open()) {
+        throw Exception(fmt("Could not read metadata from file %s.", source.c_str()));
+    }
     map<string, string> values;
     while (!metafile.eof()) {
         metafile.getline(buf, 1024);

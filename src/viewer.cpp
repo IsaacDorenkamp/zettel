@@ -6,6 +6,8 @@
 #include "commands.hpp"
 #include "content.hpp"
 #include "format.hpp"
+#include "logging.hpp"
+#include "sys.hpp"
 #include "uri.hpp"
 #include "zettel.hpp"
 
@@ -108,6 +110,7 @@ void Viewer::run(const Context& ctx) {
             break;
         case 'K':
             deselectCurrentLink();
+            m_link = -1;
             drawKeyBinds();
             refresh();
             break;
@@ -167,7 +170,10 @@ void Viewer::open(const Context& ctx, const URI& uri) {
             error(fmt("Couldn't load Zettel: %s", exc.what()));
         }
     } else {
-        // TODO: defer to the user's machine
+        sys::ExitResult result = sys::open(uri);
+        if (result.status > 0 || result.signal >= 0) {
+            logs::error("Unable to open URI %s", uri.represent().c_str());
+        }
     }
 }
 
@@ -183,7 +189,6 @@ void Viewer::deselectCurrentLink() {
             addch(mvinch(scrpos.y, scrpos.x) & A_CHARTEXT | A_UNDERLINE);
         }
         attroff(COLOR_PAIR(1) | A_BOLD);
-        m_link = -1;
     }
 }
 

@@ -1,10 +1,13 @@
 #include <filesystem>
 #include <iostream>
+#include <sstream>
+#include <cstdlib>
 
 #include "argparse/argparse.hpp"
 #include "ansi.hpp"
 #include "commands.hpp"
 #include "logging.hpp"
+#include "meta.hpp"
 
 using namespace std;
 using namespace zettel;
@@ -20,6 +23,55 @@ std::filesystem::path get_root_path() {
     return std::filesystem::current_path();
 #endif
 }
+
+struct Version {
+    uint8_t major;
+    uint8_t minor;
+    uint8_t patch;
+
+    static optional<Version> parse(string s) {
+        Version result;
+        stringstream current;
+        int phase = 0;
+        unsigned long value;
+        for (char c : s) {
+            if (c == '.') {
+                if (phase == 2) return nullopt;
+                else {
+                    try {
+                        value = stoul(current.str());
+                    } catch (const std::exception& exc) {
+                        return nullopt;
+                    }
+                    switch (phase) {
+                    case 0:
+                        result.major = value;
+                        break;
+                    case 1:
+                        result.minor = value;
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                current.str("");
+                phase++;
+                continue;
+            }
+            current << c;
+        }
+        if (phase != 2) return nullopt;
+        try {
+            value = stoul(current.str());
+        } catch (const std::exception& exc) {
+            return nullopt;
+        }
+        result.patch = value;
+        return result;
+    }
+};
+
+static const Version APP_VERSION = *Version::parse(ZETTEL_VERSION);
 
 int main(int argc, char **argv) {
     logs::putHandler("default", make_shared<logs::StreamLogHandler>(&cout, true));
@@ -84,6 +136,20 @@ int main(int argc, char **argv) {
             // init is the only subcommand which doesn't require the database to exist
             if (!std::filesystem::is_directory(ctx.dotdir) || !db->valid())
                 throw cmd::CommandException(fmt("No Zettelkasten is initialized in %s.", ctx.root.c_str()));
+            map<string, string> zettelmeta = zettel::meta::read(ctx.dotdir / "META");
+            string version = zettelmeta["version"];
+            if (version.empty()) {
+                logs::warn("No version specified in META. Assuming compatibility.");
+            } else {
+                optional<Version> parsed = Version::parse(version);
+                if (parsed) {
+                    // different patch versions should be compatible
+                    if (parsed->major != APP_VERSION.major || parsed->minor != APP_VERSION.minor)
+                        throw cmd::CommandException(fmt("META specifies a version (%s) which is not compatible with this version of Zettel (%s)", version.c_str(), ZETTEL_VERSION));
+                } else {
+                    throw cmd::CommandException(fmt("META specifies malformed version %s", version.c_str()));
+                }
+            }
         }
         if (program.is_subcommand_used("init")) {
             cmd::initialize(ctx);

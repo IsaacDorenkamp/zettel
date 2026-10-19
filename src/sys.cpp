@@ -83,18 +83,27 @@ ExitResult runcmd(const string& executable, const vector<string>& args, const ma
     }
 }
 
-void open(const URI& uri) {
-    // TODO: implement
-}
-
 #else
 
 ExitResult runcmd(const string& executable, const vector<string>& args, const map<string, string>& env) {
-    return {
-        -1,
-        -1
-    };
+    throw SysException(StartFailure);
 }
+
+#endif
+
+#if defined(__linux__)
+
+void open(const URI& uri) {
+    logs::error("No support for opening URIs.");
+}
+
+#elif defined(__APPLE__)
+
+ExitResult open(const URI& uri) {
+    return runcmd("/usr/bin/open", {"-u", uri.represent()}, {});
+}
+
+#else
 
 void open(const URI& uri) {
     logs::error("No support for opening URIs.");

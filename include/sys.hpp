@@ -27,6 +27,6 @@ private:
 };
 
 ExitResult runcmd(const std::string& executable, const std::vector<std::string>& args, const std::map<std::string, std::string>& env);
-void open(const zettel::URI& uri);
+ExitResult open(const zettel::URI& uri);
 
 }
