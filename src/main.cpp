@@ -99,13 +99,16 @@ int main(int argc, char **argv) {
     edit_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to edit.");
     edit_cmd.add_argument("--title").help("The new title for this Zettel.");
     edit_cmd.add_argument("--details-only").flag().help("Do not update the body of the Zettel, only its details (e.g. title).");
+    edit_cmd.add_description("Edit a Zettel by ID.");
 
     argparse::ArgumentParser delete_cmd("delete");
     delete_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to delete.");
     delete_cmd.add_argument("--force", "-f").flag().help("Guarantee the deletion of the Zettel, even if others refer to it.");
+    delete_cmd.add_description("Delete a Zettel. By default, this command will fail with an error if other Zettels refer to the specified Zettel.");
 
     argparse::ArgumentParser view_cmd("view");
     view_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to view.");
+    view_cmd.add_description("View a Zettel, with features to swiftly navigate through the collection via references.");
 
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
