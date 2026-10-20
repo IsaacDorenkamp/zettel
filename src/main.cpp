@@ -92,7 +92,8 @@ int main(int argc, char **argv) {
     new_cmd.add_description("Create a new Zettel.");
 
     argparse::ArgumentParser search_cmd("search");
-    search_cmd.add_argument("tag").required().help("The tag to search against.");
+    search_cmd.add_argument("term").required().help("The term to search against.");
+    search_cmd.add_argument("--type").choices("tag", "title", "text").default_value("tag").help("The field to search against. Can search by tag (exact), title (similar), or (full) text (similar).");
     search_cmd.add_description("Search for Zettels by tag.");
 
     argparse::ArgumentParser edit_cmd("edit");
@@ -168,7 +169,18 @@ int main(int argc, char **argv) {
             if (!quiet) cout << ansi::block("Created").foreground(ansi::Color::GREEN).bold(true) << " Zettel "
                 << ansi::block(fmt("%u", z->id())) << endl;
         } else if (program.is_subcommand_used("search")) {
+            cmd::SearchType type;
+            string cmdType = search_cmd.get<string>("--type");
+            if (cmdType.compare("tag") == 0) {
+                type = cmd::SearchType::Tag;
+            } else if (cmdType.compare("title") == 0) {
+                type = cmd::SearchType::Title;
+            } else {
+                // == text
+                type = cmd::SearchType::FullText;
+            }
             cmd::SearchOptions opts{
+                type,
                 search_cmd.get<string>("tag"),
             };
             vector<models::zettel> results = cmd::search(ctx, opts);

@@ -102,7 +102,16 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
 
 vector<models::zettel> search(const Context& ctx, const SearchOptions& options) {
     try {
-        return ctx.index->search(options.tag);
+        switch (options.type) {
+        case SearchType::Tag:
+            return ctx.index->searchTag(options.term);
+        case SearchType::Title:
+            return ctx.index->searchTitle(options.term);
+            break;
+        case SearchType::FullText:
+            return ctx.index->searchFullText(options.term);
+            break;
+        }
     } catch (const sql::SQLite::Exception& exc) {
         throw CommandException(fmt("Error searching index: %s", exc.what()));
     }

@@ -1,13 +1,52 @@
 #include "index.hpp"
 
+#include <fstream>
 #include <memory>
 #include <set>
 #include <string>
 #include <sstream>
+#include <variant>
 
+#include "format.hpp"
 #include "logging.hpp"
+#include "threading.hpp"
+#include "zettel.hpp"
 
 using std::optional, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
+
+struct FullTextSearchQuery {
+    string term;
+    std::filesystem::path file;
+};
+
+struct FullTextSearchResult {
+    optional<zettel::models::zettel> match;
+    string matchText;
+};
+
+static std::variant<FullTextSearchResult, string> checkFile(const FullTextSearchQuery& query) {
+    using std::ifstream;
+    using zettel::Zettel;
+    try {
+        Zettel z = Zettel::load(query.file);
+        // first, get plaintext body of zettel
+        stringstream contentss;
+        for (const std::unique_ptr<zettel::ContentBlock>& block : z.content()) contentss << block->format(zettel::PLAINTEXT_FORMAT);
+        string content(contentss.str());
+        // TODO: This search method is very simplistic and inflexible. In the future, a more advanced and flexible one should be used.
+        size_t matchAt = content.find(query.term);
+        if (matchAt == string::npos) {
+            return FullTextSearchResult{std::nullopt, ""};
+        } else {
+            return FullTextSearchResult{
+                zettel::models::zettel{z.id(), z.title()},
+                query.term
+            };
+        }
+    } catch (const zettel::ZettelException& exc) {
+        return exc.what();
+    }
+}
 
 namespace zettel {
 
@@ -58,15 +97,45 @@ void Index::rollback() {
     m_db->rollback();
 }
 
-vector<models::zettel> Index::search(string tag) {
+vector<models::zettel> Index::searchTag(string tag) {
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
         "SELECT zettel.id, zettel.title FROM zettel INNER JOIN tag ON tag.zettel_id = zettel.id WHERE tag.tag = ? ORDER BY id DESC",
         sql::paramlist{tag}
     );
-    for (; !rset.done(); ++rset) {
-        results.push_back(*rset);
+    return sql::gather(rset);
+}
+
+vector<models::zettel> Index::searchTitle(string title) {
+    vector<models::zettel> results;
+    sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
+        "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE %?%",
+        sql::paramlist{title}
+    );
+    return sql::gather(rset);
+}
+
+vector<models::zettel> Index::searchFullText(string term, const std::filesystem::path& root) {
+    // TODO: Find some way to make this more efficient??
+    vector<models::zettel> results;
+    sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel");
+    sys::ThreadSafeQueue<FullTextSearchQuery> queries;
+    sys::ThreadSafeQueue<std::variant<FullTextSearchResult, string>> searchResults;
+
+    for (const models::zettel& entry : sql::gather(rset)) {
+        queries.put(FullTextSearchQuery{
+            term,
+            root / Zettel::getFilenameForId(entry.id)
+        });
     }
+    queries.shutdown();
+
+    sys::ThreadPool<FullTextSearchQuery, std::variant<FullTextSearchResult, string>> pool(queries, searchResults, &checkFile);
+    pool.execute(4);
+
+    //decltype(std::declval<vector<models::zettel>>().push_back(std::declval<models::zettel>()));
+    // FIXME: templating for this is difficult
+    searchResults.sink<vector<models::zettel>, models::zettel>(results, [](std::variant<FullTextSearchResult, string> result) -> models::zettel { return {}; });
     return results;
 }
 

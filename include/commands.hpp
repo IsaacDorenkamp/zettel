@@ -34,8 +34,13 @@ struct NewOptions {
     bool edit;
 };
 
+enum class SearchType {
+    Tag, Title, FullText
+};
+
 struct SearchOptions {
-    std::string tag;
+    SearchType type;
+    std::string term;
 };
 
 struct EditOptions {
@@ -54,11 +59,14 @@ struct ViewOptions {
     bool ansi;
 };
 
+struct ListOptions {};
+
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
 std::vector<models::zettel> search(const Context& ctx, const SearchOptions& options);
 std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
 void remove(const Context& ctx, const DeleteOptions& options);
 void view(const Context& ctx, const ViewOptions& options);
+void list(const Context& ctx, const ListOptions& options);
 
 }
 
