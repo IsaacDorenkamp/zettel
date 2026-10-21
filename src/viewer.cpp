@@ -16,32 +16,41 @@ using zettel::cmd::Context;
 
 namespace zettel {
 
-Viewer::Viewer(const Zettel* zettel) : m_zettel(zettel), m_screen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
+Viewer::Viewer(const Zettel* zettel) : m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
 void Viewer::configure() {
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_BLACK, COLOR_BLUE);
     init_pair(3, COLOR_RED, COLOR_BLACK);
     curs_set(0);
+
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    m_screen = tui::screen{rows, cols};
+
+    m_top = newwin(1, m_screen.cols, 0, 0);
+    m_main = newwin(m_screen.rows - 3, m_screen.cols, 1, 0);
+    m_bottom = newwin(2, m_screen.cols, m_screen.rows - 2, 0);
+    m_mainScreen = tui::screen{getmaxy(m_main), getmaxx(m_main)};
+
+    wrefresh(m_top);
+    wrefresh(m_main);
+    wrefresh(m_bottom);
 }
 void Viewer::setZettel(const Zettel* zettel) {
     m_zettel = zettel;
     m_links.clear();
     m_link = -1;
 
-    int rows, cols;
-    getmaxyx(stdscr, rows, cols);
-    m_screen = tui::screen{rows, cols};
+    wclear(m_main);
 
-    clear();
-
-    move(2, 0);
-    attron(A_BOLD);
-    addstr(zettel->title().c_str());
-    addch('\n');
-    attroff(A_BOLD);
+    wmove(m_main, 0, 0);
+    wattron(m_main, A_BOLD);
+    waddstr(m_main, zettel->title().c_str());
+    waddch(m_main, '\n');
+    wattroff(m_main, A_BOLD);
     int i;
-    for (i = 0; i < std::min((size_t)cols, zettel->title().size()); i++) addch('=');
-    if (i != cols) addch('\n');
+    for (i = 0; i < std::min((size_t)m_mainScreen.cols, zettel->title().size()); i++) waddch(m_main, '=');
+    if (i != m_mainScreen.cols) waddch(m_main, '\n');
 
     ContentBlock* block;
     ReferenceBlock* ref;
@@ -51,10 +60,11 @@ void Viewer::setZettel(const Zettel* zettel) {
         block = block_ptr.get();
         if ((ref = dynamic_cast<ReferenceBlock*>(block))) {
             displayText = ref->text().value_or(ref->uri());
-            getyx(stdscr, y, x);
+            y = getcury(m_main);
+            x = getcurx(m_main);
             tui::pos here{y, x};
             int attr = A_UNDERLINE;
-            tui::range trange{ here, here.move(m_screen, displayText.size()) };
+            tui::range trange{ here, here.move(m_mainScreen, displayText.size()) };
             try {
                 URI uri = URI::parse(ref->uri());
                 m_links.push_back({uri, trange});
@@ -63,16 +73,16 @@ void Viewer::setZettel(const Zettel* zettel) {
                 m_links.push_back({URI(), trange});
                 attr |= COLOR_PAIR(3);
             }
-            attron(attr);
-            err = printw("%s", displayText.c_str());
-            attroff(attr);
+            wattron(m_main, attr);
+            err = wprintw(m_main, "%s", displayText.c_str());
+            wattroff(m_main, attr);
         } else {
-            err = printw("%s", block->format(PLAINTEXT_FORMAT).c_str());
+            err = wprintw(m_main, "%s", block->format(PLAINTEXT_FORMAT).c_str());
         }
         // if the text doesn't fit, stop
         if (err == ERR) break;
     }
-    refresh();
+    wrefresh(m_main);
 }
 
 void Viewer::chainPush(const Zettel* zettel) {
@@ -94,6 +104,7 @@ void Viewer::chainPop() {
 
 void Viewer::run(const Context& ctx) {
     configure();
+    wrefresh(stdscr);
     chainPush(m_zettel);
     drawKeyBinds();
     drawTrail();
@@ -106,17 +117,14 @@ void Viewer::run(const Context& ctx) {
         case 'k':
             nextLink();
             drawKeyBinds();
-            refresh();
             break;
         case 'K':
             deselectCurrentLink();
             m_link = -1;
             drawKeyBinds();
-            refresh();
             break;
         case 'b':
             chainPop();
-            refresh();
         case '\n':
             if (m_link >= 0) {
                 URI uri = m_links[m_link].first;
@@ -128,11 +136,12 @@ void Viewer::run(const Context& ctx) {
 }
 
 void Viewer::error(string message) {
-    move(m_screen.rows - 2, 0);
-    attron(COLOR_PAIR(3) | A_BOLD);
-    addstr("ERROR ");
-    attroff(COLOR_PAIR(3) | A_BOLD);
-    addstr(message.substr(0, m_screen.cols - 6).c_str());
+    wmove(m_bottom, 0, 0);
+    wattron(m_bottom, COLOR_PAIR(3) | A_BOLD);
+    waddstr(m_bottom, "ERROR ");
+    wattroff(m_bottom, COLOR_PAIR(3) | A_BOLD);
+    waddstr(m_bottom, message.substr(0, m_screen.cols - 6).c_str());
+    wrefresh(m_bottom);
 }
 
 void Viewer::open(const Context& ctx, const URI& uri) {
@@ -182,14 +191,15 @@ void Viewer::deselectCurrentLink() {
     tui::pos scrpos{0, 0};
     if (m_link != -1) {
         tui::range current = m_links[m_link].second;
-        move(current.start.y, current.start.x);
-        attron(COLOR_PAIR(1) | A_BOLD);
-        for (pos = current.start.scrpos(m_screen), index = 0; pos < current.end.scrpos(m_screen); pos++, index++) {
-            scrpos = tui::pos(m_screen, pos);
-            addch(mvinch(scrpos.y, scrpos.x) & A_CHARTEXT | A_UNDERLINE);
+        wmove(m_main, current.start.y, current.start.x);
+        wattron(m_main, COLOR_PAIR(1) | A_BOLD);
+        for (pos = current.start.scrpos(m_mainScreen), index = 0; pos < current.end.scrpos(m_mainScreen); pos++, index++) {
+            scrpos = tui::pos(m_mainScreen, pos);
+            waddch(m_main, mvwinch(m_main, scrpos.y, scrpos.x) & A_CHARTEXT | A_UNDERLINE);
         }
-        attroff(COLOR_PAIR(1) | A_BOLD);
+        wattroff(m_main, COLOR_PAIR(1) | A_BOLD);
     }
+    wrefresh(m_main);
 }
 
 void Viewer::nextLink() {
@@ -201,46 +211,50 @@ void Viewer::nextLink() {
     int pos, index;
     tui::pos scrpos{0, 0};
     m_link = (m_link + 1) % m_links.size();
-    attron(COLOR_PAIR(2));
-    attroff(A_UNDERLINE);
+    wattron(m_main, COLOR_PAIR(2));
+    wattroff(m_main, A_UNDERLINE);
     tui::range current = m_links[m_link].second;
-    move(current.start.y, current.start.x);
-    for (pos = current.start.scrpos(m_screen), index = 0; pos < current.end.scrpos(m_screen); pos++, index++) {
-        scrpos = tui::pos(m_screen, pos);
-        addch(mvinch(scrpos.y, scrpos.x) & A_CHARTEXT);
+    wmove(m_main, current.start.y, current.start.x);
+    for (pos = current.start.scrpos(m_mainScreen), index = 0; pos < current.end.scrpos(m_mainScreen); pos++, index++) {
+        scrpos = tui::pos(m_mainScreen, pos);
+        waddch(m_main, mvwinch(m_main, scrpos.y, scrpos.x) & A_CHARTEXT);
     }
-    attroff(COLOR_PAIR(2));
+    wattroff(m_main, COLOR_PAIR(2));
+    wrefresh(m_main);
 }
 
 void Viewer::drawTrail() {
-    move(0, 1);
+    wmove(m_top, 0, 1);
+    wclrtoeol(m_top);
     // TODO: What if this gets too long?
     Zettel::Id id;
     const Zettel* z;
     for (size_t index = 0; index < m_chain.size(); index++) {
         id = m_chain[index];
         z = &m_cache.at(id);
-        if (index > 0) addstr(" > ");
-        attron(A_ITALIC);
-        addstr(z->title().c_str());
-        attroff(A_ITALIC);
+        if (index > 0) waddstr(m_top, " > ");
+        wattron(m_top, A_ITALIC);
+        waddstr(m_top, z->title().c_str());
+        wattroff(m_top, A_ITALIC);
     }
+    wrefresh(m_top);
 }
 
 void Viewer::drawKeyBinds() {
-    move(m_screen.rows - 1, 1);
-    clrtoeol();
-    if (m_links.size() == 0) attron(A_DIM);
-    addstr("k [next link]");
-    attroff(A_DIM);
-    addstr("   ");
-    if (m_link < 0) attron(A_DIM);
-    addstr("K [deselect link]   <Return> [follow link]");
-    attroff(A_DIM);
-    if (m_chain.size() <= 1) attron(A_DIM);
-    addstr("   b [go to previous zettel]");
-    attroff(A_DIM);
-    addstr("   ^C [quit]");
+    wmove(m_bottom, 1, 0);
+    wclrtoeol(m_bottom);
+    if (m_links.size() == 0) wattron(m_bottom, A_DIM);
+    waddstr(m_bottom, "k [next link]");
+    wattroff(m_bottom, A_DIM);
+    waddstr(m_bottom, "   ");
+    if (m_link < 0) wattron(m_bottom, A_DIM);
+    waddstr(m_bottom, "K [deselect link]   <Return> [follow link]");
+    wattroff(m_bottom, A_DIM);
+    if (m_chain.size() <= 1) wattron(m_bottom, A_DIM);
+    waddstr(m_bottom, "   b [go to previous zettel]");
+    wattroff(m_bottom, A_DIM);
+    waddstr(m_bottom, "   ^C [quit]");
+    wrefresh(m_bottom);
 }
 
 }

@@ -92,6 +92,7 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
         result->save();
         ctx.index->commit();
     } catch (const zettel::ZettelException& exc) {
+        ctx.index->rollback();
         throw CommandException(fmt("Error saving Zettel: %s", exc.what()));
     } catch (const sql::SQLite::Exception& exc) {
         ctx.index->rollback();
