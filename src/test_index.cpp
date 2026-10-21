@@ -168,9 +168,30 @@ TEST_CASE_METHOD(IndexFixture, "search by tag", "[index]") {
         if (i % 2 == 0) z.addTag("even");
         m_idx->insert(&z);
     }
-    vector<models::zettel> results = m_idx->search("even");
+    vector<models::zettel> results = m_idx->searchTag("even");
     REQUIRE(results.size() == 5);
     for (int i = 0; i < 5; i++) REQUIRE(results[4 - i].id == (i + 1) * 2);
+}
+
+TEST_CASE_METHOD(IndexFixture, "search by title", "[index]") {
+    Zettel z(0, "title", "");
+    m_idx->insert(&z);
+    vector<models::zettel> results = m_idx->searchTitle("title");
+    REQUIRE(results.size() == 1);
+}
+
+TEST_CASE_METHOD(IndexFixture, "search by text", "[index]") {
+    Zettel z(0, "", "/tmp/0.txt");
+    z.addContentBlock(std::unique_ptr<ContentBlock>(new TextBlock(0, "this is the zettel text")));
+    Zettel z2(1, "", "/tmp/1.txt");
+    z2.addContentBlock(std::unique_ptr<ContentBlock>(new TextBlock(1, "this is some text")));
+    z.save();
+    z2.save();
+    m_idx->insert(&z);
+    m_idx->insert(&z2);
+    vector<models::zettel> results = m_idx->searchFullText("zettel", "/tmp");
+    REQUIRE(results.size() == 1);
+    REQUIRE(results[0].id == 0);
 }
 
 TEST_CASE_METHOD(IndexFixture, "delete a Zettel", "[index]") {

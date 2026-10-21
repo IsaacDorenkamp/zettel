@@ -109,8 +109,8 @@ vector<models::zettel> Index::searchTag(string tag) {
 vector<models::zettel> Index::searchTitle(string title) {
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
-        "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE %?%",
-        sql::paramlist{title}
+        "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE ?",
+        sql::paramlist{fmt("%%%s%%", title.c_str())}
     );
     return sql::gather(rset);
 }
@@ -133,9 +133,15 @@ vector<models::zettel> Index::searchFullText(string term, const std::filesystem:
     sys::ThreadPool<FullTextSearchQuery, std::variant<FullTextSearchResult, string>> pool(queries, searchResults, &checkFile);
     pool.execute(4);
 
-    //decltype(std::declval<vector<models::zettel>>().push_back(std::declval<models::zettel>()));
-    // FIXME: templating for this is difficult
-    searchResults.sink<vector<models::zettel>, models::zettel>(results, [](std::variant<FullTextSearchResult, string> result) -> models::zettel { return {}; });
+    searchResults.sink<vector<models::zettel>, models::zettel>(results, [](std::variant<FullTextSearchResult, string> result) -> optional<models::zettel> {
+        if (std::holds_alternative<FullTextSearchResult>(result)) {
+            FullTextSearchResult item = std::get<FullTextSearchResult>(result);
+            if (item.match) return *item.match;
+            else return std::nullopt;
+        } else {
+            return std::nullopt;
+        }
+    });
     return results;
 }
 

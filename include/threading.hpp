@@ -28,25 +28,48 @@ public:
     T get() {
         while (!m_queue.size()) {
             std::this_thread::yield();
-            if (m_shutdown) throw Shutdown();
+            if (m_shutdown) {
+                m_lock.unlock();
+                throw Shutdown();
+            }
         }
         m_lock.lock();
         T ret = m_queue.front();
-        m_queue.pop_front();
-        return ret;
+        m_queue.pop();
         m_lock.unlock();
+        return ret;
     }
     void shutdown() {
         m_shutdown = true;
     }
 
-    template <class Container, std::enable_if_t<std::is_invocable<typename Container::push_back, T>::value> = true>
+    template <class Container>
     void sink(Container& c) {
         m_lock.lock();
         try {
             while (m_queue.size()) {
                 c.push_back(m_queue.front());
-                m_queue.pop_front();
+                m_queue.pop();
+            }
+        } catch (const std::exception& exc) {
+            m_lock.unlock();
+            throw exc;
+        }
+        m_lock.unlock();
+    }
+
+    template <
+        class Container,
+        class TargetType,
+        class TransformFn,
+        std::enable_if_t<std::is_invocable_r<std::optional<TargetType>, TransformFn, T>::value, bool> = true
+    >
+    void sink(Container& c, TransformFn fn) {
+        m_lock.lock();
+        try {
+            while (m_queue.size()) {
+                if (std::optional<TargetType> item = fn(m_queue.front())) c.push_back(*item);
+                m_queue.pop();
             }
         } catch (const std::exception& exc) {
             m_lock.unlock();
@@ -63,7 +86,7 @@ private:
 template <typename InObj, typename OutObj>
 class ThreadPool {
 public:
-    ThreadPool(ThreadSafeQueue<InObj>& source, ThreadSafeQueue<OutObj>& sink, std::function<OutObj(const InObj&)> task) : m_source(source), m_sink(sink), m_task(task) {}
+    ThreadPool(ThreadSafeQueue<InObj>& source, ThreadSafeQueue<OutObj>& sink, std::function<OutObj(const InObj&)> task) : m_source(&source), m_sink(&sink), m_task(task) {}
 
     void execute(uint8_t workers) {
         using std::thread, std::vector;

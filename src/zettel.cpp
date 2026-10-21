@@ -1,5 +1,6 @@
 #include "zettel.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -39,7 +40,7 @@ void Zettel::setTitle(string title) {
 }
 
 void Zettel::addTag(string tag) {
-    // TODO: check if tag already exists
+    if (std::find(m_tags.cbegin(), m_tags.cend(), tag) != m_tags.cend()) return;
     m_tags.push_back(tag);
 }
 

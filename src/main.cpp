@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
             }
             cmd::SearchOptions opts{
                 type,
-                search_cmd.get<string>("tag"),
+                search_cmd.get<string>("term"),
             };
             vector<models::zettel> results = cmd::search(ctx, opts);
             for (const models::zettel& entry : results) cout << entry.title << " (ID " << entry.id << ")" << endl;

@@ -109,7 +109,7 @@ vector<models::zettel> search(const Context& ctx, const SearchOptions& options) 
             return ctx.index->searchTitle(options.term);
             break;
         case SearchType::FullText:
-            return ctx.index->searchFullText(options.term);
+            return ctx.index->searchFullText(options.term, ctx.root);
             break;
         }
     } catch (const sql::SQLite::Exception& exc) {
