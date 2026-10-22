@@ -21,6 +21,7 @@ public:
     virtual ~Viewer() = default;
 
     void configure();
+    void onResize();
     void setZettel(const Zettel* zettel);
     void chainPush(const Zettel* zettel);
     void chainPop();

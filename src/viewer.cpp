@@ -27,20 +27,40 @@ void Viewer::configure() {
     getmaxyx(stdscr, rows, cols);
     m_screen = tui::screen{rows, cols};
 
-    m_top = newwin(1, m_screen.cols, 0, 0);
-    m_main = newwin(m_screen.rows - 3, m_screen.cols, 1, 0);
-    m_bottom = newwin(2, m_screen.cols, m_screen.rows - 2, 0);
+    m_top = newwin(2, m_screen.cols - 2, 0, 1);
+    m_main = newwin(m_screen.rows - 4, m_screen.cols - 2, 2, 1);
+    m_bottom = newwin(2, m_screen.cols - 2, m_screen.rows - 2, 1);
     m_mainScreen = tui::screen{getmaxy(m_main), getmaxx(m_main)};
 
     wrefresh(m_top);
     wrefresh(m_main);
     wrefresh(m_bottom);
 }
-void Viewer::setZettel(const Zettel* zettel) {
-    m_zettel = zettel;
-    m_links.clear();
-    m_link = -1;
+void Viewer::onResize() {
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    clear();
+    refresh();
+    m_screen = tui::screen{rows, cols};
 
+    delwin(m_top);
+    delwin(m_main);
+    delwin(m_bottom);
+
+    m_top = newwin(2, m_screen.cols - 2, 0, 1);
+    m_main = newwin(m_screen.rows - 4, m_screen.cols - 2, 2, 1);
+    m_bottom = newwin(2, m_screen.cols - 2, m_screen.rows - 2, 1);
+    m_mainScreen = tui::screen{getmaxy(m_main), getmaxx(m_main)};
+
+    wrefresh(m_top);
+    wrefresh(m_main);
+    wrefresh(m_bottom);
+
+    setZettel(&m_cache.at(m_chain.back()));
+    drawKeyBinds();
+    drawTrail();
+}
+void Viewer::setZettel(const Zettel* zettel) {
     wclear(m_main);
 
     wmove(m_main, 0, 0);
@@ -125,11 +145,15 @@ void Viewer::run(const Context& ctx) {
             break;
         case 'b':
             chainPop();
+            break;
         case '\n':
             if (m_link >= 0) {
                 URI uri = m_links[m_link].first;
                 open(ctx, uri);
             }
+            break;
+        case KEY_RESIZE:
+            onResize();
             break;
         }
     }
@@ -224,7 +248,7 @@ void Viewer::nextLink() {
 }
 
 void Viewer::drawTrail() {
-    wmove(m_top, 0, 1);
+    wmove(m_top, 0, 0);
     wclrtoeol(m_top);
     // TODO: What if this gets too long?
     Zettel::Id id;
