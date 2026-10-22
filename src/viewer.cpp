@@ -31,11 +31,8 @@ void Viewer::configure() {
     m_main = newwin(m_screen.rows - 4, m_screen.cols - 2, 2, 1);
     m_bottom = newwin(2, m_screen.cols - 2, m_screen.rows - 2, 1);
     m_mainScreen = tui::screen{getmaxy(m_main), getmaxx(m_main)};
-
-    wrefresh(m_top);
-    wrefresh(m_main);
-    wrefresh(m_bottom);
 }
+
 void Viewer::onResize() {
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
@@ -52,15 +49,14 @@ void Viewer::onResize() {
     m_bottom = newwin(2, m_screen.cols - 2, m_screen.rows - 2, 1);
     m_mainScreen = tui::screen{getmaxy(m_main), getmaxx(m_main)};
 
-    wrefresh(m_top);
-    wrefresh(m_main);
-    wrefresh(m_bottom);
-
     setZettel(&m_cache.at(m_chain.back()));
     drawKeyBinds();
     drawTrail();
 }
+
 void Viewer::setZettel(const Zettel* zettel) {
+    m_links.clear();
+    m_link = -1;
     wclear(m_main);
 
     wmove(m_main, 0, 0);
