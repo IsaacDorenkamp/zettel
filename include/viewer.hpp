@@ -17,7 +17,7 @@ struct Context;
 
 class Viewer {
 public:
-    Viewer(const Zettel* zettel);
+    Viewer(const Zettel* zettel, const cmd::Context& ctx);
     virtual ~Viewer() = default;
 
     void configure();
@@ -25,19 +25,22 @@ public:
     void setZettel(const Zettel* zettel);
     void chainPush(const Zettel* zettel);
     void chainPop();
-    void run(const cmd::Context& ctx);
+    void run();
 private:
     void error(std::string msg);
     void deselectCurrentLink();
     void nextLink();
     void drawTrail();
     void drawKeyBinds();
-    void open(const cmd::Context& ctx, const URI& uri);
+    void open(const URI& uri);
+
+    Zettel* getZettel(const Zettel::Id& id);
 
     WINDOW* m_top;
     WINDOW* m_main;
     WINDOW* m_bottom;
 
+    const cmd::Context* m_ctx;
     const Zettel* m_zettel;
     tui::screen m_screen;
     tui::screen m_mainScreen;

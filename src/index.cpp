@@ -12,7 +12,7 @@
 #include "threading.hpp"
 #include "zettel.hpp"
 
-using std::optional, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
+using std::map, std::optional, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 struct FullTextSearchQuery {
     string term;
@@ -148,6 +148,24 @@ vector<models::zettel> Index::searchFullText(string term, const std::filesystem:
 bool Index::exists(const Zettel::Id& id) {
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel WHERE zettel.id = ?", sql::paramlist{(int)id});
     return (bool)sql::maybeone(rset);
+}
+
+map<Zettel::Id, models::zettel> Index::lookup(set<Zettel::Id> ids) {
+    stringstream query;
+    query << "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.id IN (";
+    bool first = true;
+    for (const Zettel::Id& id : ids) {
+        if (first) first = false;
+        else query << ", ";
+        query << '?';
+    }
+    query << ")";
+    vector<int> qids;
+    for (const Zettel::Id& id : ids) qids.push_back((int)id);
+    sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(query.str(), sql::paramvec<int>{qids});
+    map<Zettel::Id, models::zettel> results;
+    for(; !rset.done(); ++rset) results.insert({ rset->id, *rset });
+    return results;
 }
 
 set<Zettel::Id> Index::getReferencesFor(const Zettel::Id& id, bool validOnly) {

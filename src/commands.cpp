@@ -188,8 +188,8 @@ void view(const Context& ctx, const ViewOptions& options) {
     ENSURE_EXISTS(ctx, options.id);
     try {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
-        Viewer v(&z);
-        tui::run_curses(std::bind(&Viewer::run, &v, std::ref(ctx)));
+        Viewer v(&z, ctx);
+        tui::run_curses(std::bind(&Viewer::run, &v));
     } catch (const zettel::ZettelException& exc) {
         throw CommandException(fmt("Could not view Zettel %u: %s", options.id, exc.what()));
     }

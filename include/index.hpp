@@ -50,6 +50,7 @@ public:
     void rollback();
 
     bool exists(const Zettel::Id& id);
+    std::map<Zettel::Id, models::zettel> lookup(std::set<Zettel::Id> ids); 
     std::set<Zettel::Id> getReferencesFor(const Zettel::Id& id, bool validOnly = true);
     std::set<Zettel::Id> getReferencesTo(const Zettel::Id& id, bool validOnly = true);
 

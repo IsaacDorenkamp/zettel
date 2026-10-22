@@ -11,12 +11,12 @@
 #include "uri.hpp"
 #include "zettel.hpp"
 
-using std::string, std::unique_ptr;
+using std::map, std::pair, std::set, std::string, std::unique_ptr;
 using zettel::cmd::Context;
 
 namespace zettel {
 
-Viewer::Viewer(const Zettel* zettel) : m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
+Viewer::Viewer(const Zettel* zettel, const Context& ctx) : m_ctx(&ctx), m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
 void Viewer::configure() {
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_BLACK, COLOR_BLUE);
@@ -72,6 +72,7 @@ void Viewer::setZettel(const Zettel* zettel) {
     ReferenceBlock* ref;
     string displayText;
     int err, y, x;
+    bool refs = true;
     for (const unique_ptr<ContentBlock>& block_ptr : zettel->content()) {
         block = block_ptr.get();
         if ((ref = dynamic_cast<ReferenceBlock*>(block))) {
@@ -96,7 +97,32 @@ void Viewer::setZettel(const Zettel* zettel) {
             err = wprintw(m_main, "%s", block->format(PLAINTEXT_FORMAT).c_str());
         }
         // if the text doesn't fit, stop
-        if (err == ERR) break;
+        // TODO: switch to pad, add scrolling
+        if (err == ERR) {
+            refs = false;
+            break;
+        }
+    }
+    if (refs) {
+        set<Zettel::Id> ids = m_ctx->index->getReferencesTo(zettel->id());
+        if (ids.size()) {
+            waddstr(m_main, "\nReferences: ");
+            map<Zettel::Id, models::zettel> linked = m_ctx->index->lookup(ids);
+            bool first = true;
+            for (const pair<Zettel::Id, models::zettel>& entry : linked) {
+                if (first) first = false;
+                else waddstr(m_main, " ... ");
+                y = getcury(m_main);
+                x = getcurx(m_main);
+                tui::pos here{y, x};
+                tui::range trange{ here, here.move(m_mainScreen, entry.second.title.size()) };
+                m_links.push_back({URI("zettel", std::nullopt, std::to_string(entry.first), std::nullopt, std::nullopt), trange});
+                wattron(m_main, A_UNDERLINE | COLOR_PAIR(1));
+                err = waddstr(m_main, entry.second.title.c_str());
+                wattroff(m_main, A_UNDERLINE | COLOR_PAIR(1));
+                if (err) break;
+            }
+        }
     }
     wrefresh(m_main);
 }
@@ -118,7 +144,7 @@ void Viewer::chainPop() {
     }
 }
 
-void Viewer::run(const Context& ctx) {
+void Viewer::run() {
     configure();
     wrefresh(stdscr);
     chainPush(m_zettel);
@@ -145,7 +171,7 @@ void Viewer::run(const Context& ctx) {
         case '\n':
             if (m_link >= 0) {
                 URI uri = m_links[m_link].first;
-                open(ctx, uri);
+                open(uri);
             }
             break;
         case KEY_RESIZE:
@@ -164,7 +190,7 @@ void Viewer::error(string message) {
     wrefresh(m_bottom);
 }
 
-void Viewer::open(const Context& ctx, const URI& uri) {
+void Viewer::open(const URI& uri) {
     if (uri.scheme().compare("zettel") == 0) {
         if (uri.authority().has_value()) {
             error("Zettel URI should not have an authority.");
@@ -190,20 +216,32 @@ void Viewer::open(const Context& ctx, const URI& uri) {
             error(fmt("Zettel ID out of range: %s", exc.what()));
             return;
         }
-        string filename = Zettel::getFilenameForId((uint32_t)id);
-        std::filesystem::path zettelPath = ctx.root / filename;
-        try {
-            Zettel z = Zettel::load(zettelPath);
-            chainPush(&z);
-        } catch (const ZettelException& exc) {
-            error(fmt("Couldn't load Zettel: %s", exc.what()));
+        if (std::find(m_chain.begin(), m_chain.end(), id) != m_chain.end()) {
+            while (m_chain.back() != id) chainPop();
+            return;
         }
+
+        Zettel* z = getZettel(id);
+        if (z) chainPush(z);
     } else {
         sys::ExitResult result = sys::open(uri);
         if (result.status > 0 || result.signal >= 0) {
             logs::error("Unable to open URI %s", uri.represent().c_str());
         }
     }
+}
+
+Zettel* Viewer::getZettel(const Zettel::Id& id) {
+    map<Zettel::Id, Zettel>::iterator it = m_cache.find(id);
+    if (it == m_cache.end()) {
+        try {
+            it = m_cache.insert({ id, Zettel::load(m_ctx->root / Zettel::getFilenameForId(id)) }).first;
+        } catch (const ZettelException& exc) {
+            error(fmt("Unable to load Zettel %u: %s", id, exc.what()));
+            return nullptr;
+        }
+    }
+    return &it->second;
 }
 
 void Viewer::deselectCurrentLink() {
