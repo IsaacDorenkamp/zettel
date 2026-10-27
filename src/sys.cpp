@@ -93,8 +93,8 @@ ExitResult runcmd(const string& executable, const vector<string>& args, const ma
 
 #if defined(__linux__)
 
-void open(const URI& uri) {
-    logs::error("No support for opening URIs.");
+ExitResult open(const URI& uri) {
+    return runcmd("/usr/bin/xdg-open", {uri.represent()}, {});
 }
 
 #elif defined(__APPLE__)
@@ -106,7 +106,7 @@ ExitResult open(const URI& uri) {
 #else
 
 void open(const URI& uri) {
-    logs::error("No support for opening URIs.");
+    throw SysException("No support for opening URIs");
 }
 
 #endif
