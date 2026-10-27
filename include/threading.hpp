@@ -33,7 +33,7 @@ public:
         std::unique_lock<std::mutex> lock(m_lock);
         m_cv.wait(lock, [this](){ return m_shutdown || !m_queue.empty(); });
         if (m_shutdown) throw Shutdown();
-        T ret = m_queue.front();
+        T ret = std::move(m_queue.front());
         m_queue.pop();
         return ret;
     }
@@ -47,7 +47,7 @@ public:
         std::lock_guard guard(m_lock);
         try {
             while (m_queue.size()) {
-                c.push_back(m_queue.front());
+                c.push_back(std::move(m_queue.front()));
                 m_queue.pop();
             }
         } catch (const std::exception& exc) {
@@ -65,7 +65,7 @@ public:
         std::lock_guard guard(m_lock);
         try {
             while (m_queue.size()) {
-                if (std::optional<TargetType> item = fn(m_queue.front())) c.push_back(*item);
+                if (std::optional<TargetType> item = fn(std::move(m_queue.front()))) c.push_back(*item);
                 m_queue.pop();
             }
         } catch (const std::exception& exc) {
