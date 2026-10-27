@@ -173,6 +173,14 @@ map<Zettel::Id, models::zettel> Index::lookup(set<Zettel::Id> ids) {
     return results;
 }
 
+set<string> Index::getTagsFor(const Zettel::Id& id) {
+    sql::SQLite::iterator<string> rset = m_db->query<string>("SELECT tag.tag FROM tag WHERE tag.zettel_id = ?", [](const vector<sqlite3_value*>& row) {
+        return (const char*)sqlite3_value_text(row[0]);
+    }, sql::paramlist{(int)id});
+    vector<string> tags(sql::gather(rset));
+    return set<string>(tags.begin(), tags.end());
+}
+
 set<Zettel::Id> Index::getReferencesFor(const Zettel::Id& id, bool validOnly) {
     string query = fmt("SELECT source, dest, valid FROM reference WHERE source = ?%s", validOnly ? " AND valid > 0" : "");
     sql::SQLite::iterator<models::reference> rset = m_db->query<models::reference>(query, sql::paramlist{(int)id});

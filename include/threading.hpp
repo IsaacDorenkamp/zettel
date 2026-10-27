@@ -28,15 +28,12 @@ public:
     T get() {
         while (!m_queue.size()) {
             std::this_thread::yield();
-            if (m_shutdown) {
-                m_lock.unlock();
-                throw Shutdown();
-            }
+            if (m_shutdown) throw Shutdown();
         }
-        m_lock.lock();
+
+        std::lock_guard guard(m_lock);
         T ret = m_queue.front();
         m_queue.pop();
-        m_lock.unlock();
         return ret;
     }
     void shutdown() {
@@ -45,7 +42,7 @@ public:
 
     template <class Container>
     void sink(Container& c) {
-        m_lock.lock();
+        std::lock_guard guard(m_lock);
         try {
             while (m_queue.size()) {
                 c.push_back(m_queue.front());
@@ -55,7 +52,6 @@ public:
             m_lock.unlock();
             throw exc;
         }
-        m_lock.unlock();
     }
 
     template <
@@ -65,7 +61,7 @@ public:
         std::enable_if_t<std::is_invocable_r<std::optional<TargetType>, TransformFn, T>::value, bool> = true
     >
     void sink(Container& c, TransformFn fn) {
-        m_lock.lock();
+        std::lock_guard guard(m_lock);
         try {
             while (m_queue.size()) {
                 if (std::optional<TargetType> item = fn(m_queue.front())) c.push_back(*item);
@@ -75,7 +71,6 @@ public:
             m_lock.unlock();
             throw exc;
         }
-        m_lock.unlock();
     }
 private:
     std::mutex m_lock;

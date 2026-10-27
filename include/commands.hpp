@@ -69,6 +69,7 @@ std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
 void remove(const Context& ctx, const DeleteOptions& options);
 void view(const Context& ctx, const ViewOptions& options);
 void list(const Context& ctx, const ListOptions& options);
+uint32_t check(const Context& ctx);
 
 }
 

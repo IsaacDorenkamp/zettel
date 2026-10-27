@@ -19,6 +19,7 @@ Zettel::Zettel(const Zettel& zettel) : Zettel(zettel.m_id, zettel.m_title, zette
         m_content.push_back(block->clone());
     }
 }
+Zettel::Zettel() : Zettel(0, "", "") {}
 
 const Zettel::Id& Zettel::id() const {
     return m_id;

@@ -154,6 +154,9 @@ int main(int argc, char **argv) {
     view_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to view.");
     view_cmd.add_description("View a Zettel, with features to swiftly navigate through the collection via references.");
 
+    argparse::ArgumentParser check_cmd("check");
+    check_cmd.add_description("Ensure that the database and the file structure are in sync.");
+
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
     program.add_subparser(list_cmd);
@@ -161,6 +164,7 @@ int main(int argc, char **argv) {
     program.add_subparser(edit_cmd);
     program.add_subparser(delete_cmd);
     program.add_subparser(view_cmd);
+    program.add_subparser(check_cmd);
 
     filesystem::path root = get_root_path();
     std::shared_ptr<sql::SQLite> db = make_shared<sql::SQLite>((root / ".zettel" / "struct.db").c_str());
@@ -260,6 +264,13 @@ int main(int argc, char **argv) {
                 true
             };
             cmd::view(ctx, opts);
+        } else if (program.is_subcommand_used("check")) {
+            uint32_t issues = cmd::check(ctx);
+            if (!quiet) {
+                if (!issues) cout << "Found " << ansi::block("no issues").foreground(ansi::Color::GREEN).bold(true) << '!' << endl;
+                else cout << "Found " << ansi::block(zettel::fmt("%u issue%s", issues, issues > 1 ? "s" : "")).foreground(ansi::Color::RED).bold(true) << '.' << endl;
+            }
+            if (issues) return EXIT_FAILURE;
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {

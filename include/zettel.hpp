@@ -29,6 +29,7 @@ public:
         const std::filesystem::path& path
     );
     Zettel(const Zettel& zettel);
+    Zettel();
     virtual ~Zettel() = default;
 
     const Id& id() const;

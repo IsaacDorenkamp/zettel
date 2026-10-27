@@ -1,8 +1,10 @@
 #include "commands.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 #include "ansi.hpp"
@@ -10,14 +12,74 @@
 #include "editor.hpp"
 #include "format.hpp"
 #include "index.hpp"
+#include "logging.hpp"
 #include "meta.hpp"
 #include "parser.hpp"
 #include "sql.hpp"
+#include "threading.hpp"
 #include "tui.hpp"
 #include "viewer.hpp"
 #include "zettel.hpp"
 
 using std::cout, std::endl, std::make_unique, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
+
+namespace {
+
+struct CheckTask {
+    zettel::models::zettel subject;
+    std::filesystem::path path;
+    std::set<zettel::Zettel::Id> references;
+    std::set<std::string> tags;
+};
+
+struct CheckResult {
+    zettel::models::zettel subject;
+    bool exists;
+    std::optional<std::string> error;
+    std::vector<zettel::Zettel::Id> refsMissingFromIndex;
+    std::vector<zettel::Zettel::Id> refsMissingFromFile;
+    std::vector<std::string> tagsMissingFromIndex;
+    std::vector<std::string> tagsMissingFromFile;
+};
+
+}
+
+static CheckResult checkZettel(const CheckTask& task) {
+    using std::vector;
+    using zettel::URI, zettel::Zettel, zettel::ZettelException;
+    CheckResult check{ task.subject, false, std::nullopt };
+    if (!std::filesystem::is_regular_file(task.path)) return check;
+    check.exists = true;
+    Zettel parsed;
+    try {
+        parsed = Zettel::load(task.path);
+    } catch (const ZettelException& exc) {
+        check.error = exc.what();
+        return check;
+    }
+    set<Zettel::Id> refsInBody;
+    URI refUri;
+    unsigned long zid;
+    for (const unique_ptr<zettel::ContentBlock>& block : parsed.content()) {
+        if (zettel::ReferenceBlock* ref = dynamic_cast<zettel::ReferenceBlock*>(block.get())) {
+            try {
+                refUri = URI::parse(ref->uri());
+                if (refUri.scheme().compare("zettel") == 0) {
+                    try {
+                        zid = std::stoul(refUri.path());
+                        if (zid > 0xFFFFFFFF) throw std::out_of_range("");
+                        refsInBody.insert((Zettel::Id)zid);
+                        if (task.references.find(zid) == task.references.end()) check.refsMissingFromIndex.push_back((Zettel::Id)zid);
+                    } catch (const std::exception& exc) {}
+                }
+            } catch (const URI::Exception& exc) {}
+        }
+    }
+    std::set_difference(task.references.begin(), task.references.end(), refsInBody.begin(), refsInBody.end(), std::back_inserter(check.refsMissingFromFile));
+    std::set_difference(task.tags.begin(), task.tags.end(), parsed.tags().begin(), parsed.tags().end(), std::back_inserter(check.tagsMissingFromFile));
+    std::set_difference(parsed.tags().begin(), parsed.tags().end(), task.tags.begin(), task.tags.end(), std::back_inserter(check.tagsMissingFromIndex));
+    return check;
+}
 
 namespace zettel {
 
@@ -208,6 +270,62 @@ void list(const Context& ctx, const ListOptions& options) {
             cout << ansi::block(std::to_string(z.id)).dim(true) << " " << ansi::block(z.title).bold(true) << endl;
         }
     }
+}
+
+uint32_t check(const Context& ctx) {
+    vector<models::zettel> zettels = ctx.index->list();
+    sys::ThreadSafeQueue<CheckTask> taskQ;
+    sys::ThreadSafeQueue<CheckResult> resultQ;
+
+    // TODO: parallelize this piece?
+    set<Zettel::Id> refs;
+    for (const models::zettel& zettel : zettels) {
+        refs = ctx.index->getReferencesFor(zettel.id, false);
+        taskQ.put({ zettel, ctx.root / zettel::Zettel::getFilenameForId(zettel.id), refs, ctx.index->getTagsFor(zettel.id) });
+    }
+    taskQ.shutdown();
+
+    sys::ThreadPool<CheckTask, CheckResult> checker(taskQ, resultQ, &checkZettel);
+    // TODO: don't hardcode workers!
+    checker.execute(4);
+
+    vector<CheckResult> results;
+    resultQ.sink(results);
+
+    uint32_t issues = 0;
+    for (const CheckResult& result : results) {
+        if (!result.exists) {
+            issues++;
+            logs::error("Zettel '%s' (ID %u) exists in database, but the file is missing.", result.subject.title.c_str(), result.subject.id);
+            continue;
+        }
+        if (result.error) {
+            issues++;
+            logs::error("Zettel '%s' (ID %u) is malformed: %s", result.subject.title.c_str(), result.subject.id, result.error->c_str());
+            continue;
+        }
+        for (const Zettel::Id& id : result.refsMissingFromIndex) {
+            issues++;
+            logs::warn("Zettel '%s' (ID %u) contains a reference to Zettel #%u, but this is not reflected in the database.",
+                result.subject.title.c_str(), result.subject.id, id);
+        }
+        for (const Zettel::Id& id : result.refsMissingFromFile) {
+            issues++;
+            logs::warn("Zettel '%s' (ID %u) is said to reference Zettel #%u in the database, but this is not reflected in its file.",
+                result.subject.title.c_str(), result.subject.id, id);
+        }
+        for (const string& tag : result.tagsMissingFromIndex) {
+            issues++;
+            logs::warn("Zettel '%s' (ID %u) contains tag '%s', but this is not reflected in the database.",
+                result.subject.title.c_str(), result.subject.id, tag.c_str());
+        }
+        for (const string& tag : result.tagsMissingFromFile) {
+            issues++;
+            logs::warn("Zettel '%s' (ID %u) is said to be tagged as '%s' in the database, but this is not reflected in its file.",
+                result.subject.title.c_str(), result.subject.id, tag.c_str());
+        }
+    }
+    return issues;
 }
 
 }
