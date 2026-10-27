@@ -1,7 +1,10 @@
 #pragma once
 
+#include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <thread>
 #include <vector>
@@ -17,27 +20,26 @@ public:
         }
     };
 
-    ThreadSafeQueue() : m_lock(), m_queue(), m_shutdown(false) {}
+    ThreadSafeQueue() : m_cv(), m_lock(), m_queue(), m_shutdown(false) {}
     void put(const T& item) {
-        if (m_shutdown) throw Shutdown();
-        m_lock.lock();
-        if (m_shutdown) throw Shutdown();
-        m_queue.push(item);
-        m_lock.unlock();
+        {
+            std::lock_guard guard(m_lock);
+            if (m_shutdown) throw Shutdown();
+            m_queue.push(item);
+        }
+        m_cv.notify_one();
     }
     T get() {
-        while (!m_queue.size()) {
-            std::this_thread::yield();
-            if (m_shutdown) throw Shutdown();
-        }
-
-        std::lock_guard guard(m_lock);
+        std::unique_lock<std::mutex> lock(m_lock);
+        m_cv.wait(lock, [this](){ return m_shutdown || !m_queue.empty(); });
+        if (m_shutdown) throw Shutdown();
         T ret = m_queue.front();
         m_queue.pop();
         return ret;
     }
     void shutdown() {
         m_shutdown = true;
+        m_cv.notify_all();
     }
 
     template <class Container>
@@ -49,10 +51,9 @@ public:
                 m_queue.pop();
             }
         } catch (const std::exception& exc) {
-            m_lock.unlock();
             throw exc;
         }
-    }
+    };
 
     template <
         class Container,
@@ -68,11 +69,11 @@ public:
                 m_queue.pop();
             }
         } catch (const std::exception& exc) {
-            m_lock.unlock();
             throw exc;
         }
-    }
+    };
 private:
+    std::condition_variable m_cv;
     std::mutex m_lock;
     std::queue<T> m_queue;
     bool m_shutdown;

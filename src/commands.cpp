@@ -178,6 +178,7 @@ vector<models::zettel> search(const Context& ctx, const SearchOptions& options) 
     } catch (const sql::SQLite::Exception& exc) {
         throw CommandException(fmt("Error searching index: %s", exc.what()));
     }
+    throw CommandException(fmt("Unknown search type '%d'", options.type));
 }
 
 #define ENSURE_EXISTS(ctx, id) if (!ctx.index->exists(id)) throw CommandException(fmt("No Zettel with ID %d", id))

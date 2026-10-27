@@ -1,6 +1,7 @@
 #include "viewer.hpp"
 
 #include <curses.h>
+#include <algorithm>
 #include <stdexcept>
 
 #include "commands.hpp"
