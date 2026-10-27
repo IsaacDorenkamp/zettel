@@ -59,7 +59,9 @@ struct ViewOptions {
     bool ansi;
 };
 
-struct ListOptions {};
+struct ListOptions {
+    bool plain;
+};
 
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
 std::vector<models::zettel> search(const Context& ctx, const SearchOptions& options);

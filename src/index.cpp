@@ -97,6 +97,11 @@ void Index::rollback() {
     m_db->rollback();
 }
 
+vector<models::zettel> Index::list() {
+    sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel ORDER BY id DESC");
+    return sql::gather(rset);
+}
+
 vector<models::zettel> Index::searchTag(string tag) {
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(

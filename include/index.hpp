@@ -54,6 +54,7 @@ public:
     std::set<Zettel::Id> getReferencesFor(const Zettel::Id& id, bool validOnly = true);
     std::set<Zettel::Id> getReferencesTo(const Zettel::Id& id, bool validOnly = true);
 
+    std::vector<models::zettel> list();
     std::vector<models::zettel> searchTag(std::string tag);
     std::vector<models::zettel> searchTitle(std::string title);
     std::vector<models::zettel> searchFullText(std::string term, const std::filesystem::path& root);

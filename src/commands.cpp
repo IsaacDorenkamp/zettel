@@ -1,9 +1,11 @@
 #include "commands.hpp"
 
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <vector>
 
+#include "ansi.hpp"
 #include "content.hpp"
 #include "editor.hpp"
 #include "format.hpp"
@@ -15,7 +17,7 @@
 #include "viewer.hpp"
 #include "zettel.hpp"
 
-using std::make_unique, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
+using std::cout, std::endl, std::make_unique, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -196,6 +198,17 @@ void view(const Context& ctx, const ViewOptions& options) {
 }
 
 #undef ENSURE_EXISTS
+
+void list(const Context& ctx, const ListOptions& options) {
+    vector<models::zettel> zettels = ctx.index->list();
+    for (const models::zettel& z : zettels) {
+        if (options.plain) {
+            cout << z.id << " " << z.title << endl;
+        } else {
+            cout << ansi::block(std::to_string(z.id)).dim(true) << " " << ansi::block(z.title).bold(true) << endl;
+        }
+    }
+}
 
 }
 

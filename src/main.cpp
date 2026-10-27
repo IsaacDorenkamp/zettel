@@ -91,6 +91,9 @@ int main(int argc, char **argv) {
     new_cmd.add_argument("--noedit").flag().help("If specified, create the Zettel without any content instead of immediately editing.");
     new_cmd.add_description("Create a new Zettel.");
 
+    argparse::ArgumentParser list_cmd("list");
+    list_cmd.add_argument("--plain").flag().help("When set, output will not contain ANSI escape codes.");
+
     argparse::ArgumentParser search_cmd("search");
     search_cmd.add_argument("term").required().help("The term to search against.");
     search_cmd.add_argument("--type").choices("tag", "title", "text").default_value("tag").help("The field to search against. Can search by tag (exact), title (similar), or (full) text (similar).");
@@ -113,6 +116,7 @@ int main(int argc, char **argv) {
 
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
+    program.add_subparser(list_cmd);
     program.add_subparser(search_cmd);
     program.add_subparser(edit_cmd);
     program.add_subparser(delete_cmd);
@@ -168,7 +172,12 @@ int main(int argc, char **argv) {
             unique_ptr<Zettel> z = cmd::make_new(ctx, opts);
             if (!quiet) cout << ansi::block("Created").foreground(ansi::Color::GREEN).bold(true) << " Zettel "
                 << ansi::block(fmt("%u", z->id())) << endl;
-        } else if (program.is_subcommand_used("search")) {
+        } else if (program.is_subcommand_used("list")) {
+            cmd::ListOptions opts{
+                list_cmd.get<bool>("--plain")
+            };
+            cmd::list(ctx, opts);
+        }else if (program.is_subcommand_used("search")) {
             cmd::SearchType type;
             string cmdType = search_cmd.get<string>("--type");
             if (cmdType.compare("tag") == 0) {
