@@ -29,6 +29,43 @@ struct Version {
     uint8_t minor;
     uint8_t patch;
 
+    bool operator>(const Version& other) const {
+        if (major > other.major) {
+            return true;
+        } else if (major < other.major) {
+            return false;
+        }
+        if (minor > other.minor) {
+            return true;
+        } else if (minor < other.minor) {
+            return false;
+        }
+        if (patch > other.patch) {
+            return true;
+        }
+        return false;
+    }
+
+    bool operator==(const Version& other) const {
+        return major == other.major && minor == other.minor && patch == other.patch;
+    }
+
+    bool operator!=(const Version& other) const {
+        return !(*this == other);
+    }
+
+    bool operator>=(const Version& other) const {
+        return (*this == other) || (*this > other);
+    }
+
+    bool operator<(const Version& other) const {
+        return !(*this >= other);
+    }
+
+    bool operator<=(const Version& other) const {
+        return !(*this > other);
+    }
+
     static optional<Version> parse(string s) {
         Version result;
         stringstream current;
@@ -72,6 +109,9 @@ struct Version {
 };
 
 static const Version APP_VERSION = *Version::parse(ZETTEL_VERSION);
+static const set<Version> BW_COMPATIBLE = {
+    Version{0, 0, 1}
+};
 
 int main(int argc, char **argv) {
     logs::putHandler("default", make_shared<logs::StreamLogHandler>(&cout, true));
@@ -152,7 +192,7 @@ int main(int argc, char **argv) {
                 optional<Version> parsed = Version::parse(version);
                 if (parsed) {
                     // different patch versions should be compatible
-                    if (parsed->major != APP_VERSION.major || parsed->minor != APP_VERSION.minor)
+                    if (*parsed != APP_VERSION && BW_COMPATIBLE.find(*parsed) == BW_COMPATIBLE.end())
                         throw cmd::CommandException(fmt("META specifies a version (%s) which is not compatible with this version of Zettel (%s)", version.c_str(), ZETTEL_VERSION));
                 } else {
                     throw cmd::CommandException(fmt("META specifies malformed version %s", version.c_str()));
