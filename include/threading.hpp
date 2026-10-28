@@ -32,7 +32,7 @@ public:
     T get() {
         std::unique_lock<std::mutex> lock(m_lock);
         m_cv.wait(lock, [this](){ return m_shutdown || !m_queue.empty(); });
-        if (m_shutdown) throw Shutdown();
+        if (m_shutdown && m_queue.empty()) throw Shutdown();
         T ret = std::move(m_queue.front());
         m_queue.pop();
         return ret;
