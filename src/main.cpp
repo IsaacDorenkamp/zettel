@@ -143,6 +143,18 @@ int main(int argc, char **argv) {
     edit_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to edit.");
     edit_cmd.add_argument("--title").help("The new title for this Zettel.");
     edit_cmd.add_argument("--details-only").flag().help("Do not update the body of the Zettel, only its details (e.g. title).");
+    edit_cmd.add_argument("--stdin").flag().help("Instead of opening an editor to modify the body of the Zettel, use the input from stdin.");
+    edit_cmd.add_argument("--tag", "-t")
+        .default_value<vector<string>>({})
+        .append()
+        .help("A tag which should be added to the Zettel.");
+    edit_cmd.add_argument("--notag", "-n")
+        .default_value<vector<string>>({})
+        .append()
+        .help("A tag which should be removed from the Zettel.");
+    edit_cmd.add_argument("--strict").choices("none", "add", "remove", "all").default_value("none").help("Strict mode. Strict mode for 'add' causes the edit to fail if one of the"
+        " tags specified already exists on this Zettel. Strict mode for 'remove' causes the edit to fail if one of the tags marked for removal with --notag/-n does not exist on"
+        "this Zettel. 'none' disables strict mode, and 'all' enables strict mode for both 'add' and 'remove'.");
     edit_cmd.add_description("Edit a Zettel by ID.");
 
     argparse::ArgumentParser delete_cmd("delete");
@@ -243,10 +255,17 @@ int main(int argc, char **argv) {
                 ).bold(true).italic(true).foreground(results.size() == 0 ? ansi::Color::RED : ansi::Color::WHITE)
                 << ansi::block(" result" + string(results.size() != 1 ? "s" : "")).italic(true) << endl;
         } else if (program.is_subcommand_used("edit")) {
+            string strict = edit_cmd.get<string>("--strict");
+            bool allStrict = strict.compare("all") == 0;
             cmd::EditOptions opts{
                 edit_cmd.get<uint32_t>("id"),
                 edit_cmd.present<string>("title"),
-                edit_cmd.get<bool>("--details-only")
+                edit_cmd.get<bool>("--details-only"),
+                edit_cmd.get<bool>("--stdin"),
+                edit_cmd.get<vector<string>>("--tag"),
+                edit_cmd.get<vector<string>>("--notag"),
+                strict.compare("add") == 0 || allStrict,
+                strict.compare("remove") == 0 || allStrict
             };
             unique_ptr<Zettel> zet = cmd::edit(ctx, opts);
             if (!quiet) cout << ansi::block("Updated ").italic(true) << ansi::block(zet->title()).bold(true) << endl;

@@ -189,19 +189,54 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
         if (options.title) z.setTitle(*options.title);
 
-        if (!options.detailsOnly) {
-            unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
-            stringstream defaultContent;
-            for (const unique_ptr<ContentBlock>& block : z.content()) {
-                defaultContent << block->format(PLAINTEXT_FORMAT);
+        stringstream query;
+        if (options.strictAdd) {
+            query << "SELECT tag.tag FROM tag WHERE zettel.id = ? AND tag.tag IN (";
+            vector<string> params;
+            params.push_back(std::to_string(z.id()));
+            bool first = true;
+            for (const string& tag : options.addTags) {
+                if (first) first = false;
+                else query << ',';
+                query << tag;
+                params.push_back(tag);
             }
-            string updatedContent = ed->readInput(defaultContent.str());
-            z.clearContent();
+            query << ") LIMIT 1";
+            sql::SQLite::iterator<models::zettel_tag> rset = ctx.db->query<models::zettel_tag>(query.str(), sql::paramvec<string>{params});
 
-            stringstream rawContent(updatedContent);
-            rawContent.seekg(0);
-            unique_ptr<Parser> p(new DefaultParser(rawContent));
-            while (!p->done()) z.addContentBlock(p->next());
+            stringstream errmsg("The following tags already exist: ");
+            first = true;
+            for (; !rset.done(); ++rset) {
+                if (first) first = false;
+                else errmsg << ", ";
+                errmsg << rset->tag;
+            }
+            throw CommandException(errmsg.str());
+        }
+
+        if (!options.detailsOnly) {
+            if (options.use_stdin) {
+                stringstream content;
+                unique_ptr<char[]> buf = make_unique<char[]>(1024);
+                size_t bytesRead;
+                while ((bytesRead = fread(buf.get(), 1, 1024, stdin))) {
+                    content << std::string_view(buf.get(), bytesRead);
+                }
+                if (ferror(stdin)) throw CommandException("Error reading stdin");
+            } else {
+                unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
+                stringstream defaultContent;
+                for (const unique_ptr<ContentBlock>& block : z.content()) {
+                    defaultContent << block->format(PLAINTEXT_FORMAT);
+                }
+                string updatedContent = ed->readInput(defaultContent.str());
+                z.clearContent();
+
+                stringstream rawContent(updatedContent);
+                rawContent.seekg(0);
+                unique_ptr<Parser> p(new DefaultParser(rawContent));
+                while (!p->done()) z.addContentBlock(p->next());
+            }
         }
 
         ctx.index->begin();

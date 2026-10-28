@@ -47,6 +47,11 @@ struct EditOptions {
     Zettel::Id id;
     std::optional<std::string> title;
     bool detailsOnly;
+    bool use_stdin;
+    std::vector<std::string> addTags;
+    std::vector<std::string> removeTags;
+    bool strictAdd;
+    bool strictRemove;
 };
 
 struct DeleteOptions {
