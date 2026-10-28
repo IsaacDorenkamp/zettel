@@ -44,6 +44,9 @@ void Zettel::addTag(string tag) {
     if (std::find(m_tags.cbegin(), m_tags.cend(), tag) != m_tags.cend()) return;
     m_tags.push_back(tag);
 }
+void Zettel::setTags(const vector<string>& tags) {
+    m_tags = tags;
+}
 
 ContentBlock* Zettel::addContentBlock(unique_ptr<ContentBlock>&& block) {
     m_content.push_back(std::move(block));

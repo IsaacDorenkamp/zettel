@@ -189,31 +189,42 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
         if (options.title) z.setTitle(*options.title);
 
-        stringstream query;
-        if (options.strictAdd) {
-            query << "SELECT tag.tag FROM tag WHERE zettel.id = ? AND tag.tag IN (";
-            vector<string> params;
-            params.push_back(std::to_string(z.id()));
-            bool first = true;
-            for (const string& tag : options.addTags) {
-                if (first) first = false;
-                else query << ',';
-                query << tag;
-                params.push_back(tag);
+        vector<string> diff;
+        set<string> newTags;
+        bool first;
+        if (options.strictRemove && !options.removeTags.empty()) {
+            // if we've reached here, diff must be empty
+            std::set_difference(options.removeTags.begin(), options.removeTags.end(), z.tags().begin(), z.tags().end(), std::back_inserter(diff));
+            if (!diff.empty()) {
+                stringstream errmsg("The following tags are not present: ");
+                first = true;
+                for (const string& tag : diff) {
+                    if (first) first = false;
+                    else errmsg << ", ";
+                    errmsg << tag;
+                }
+                throw CommandException(errmsg.str());
             }
-            query << ") LIMIT 1";
-            sql::SQLite::iterator<models::zettel_tag> rset = ctx.db->query<models::zettel_tag>(query.str(), sql::paramvec<string>{params});
-
-            stringstream errmsg("The following tags already exist: ");
-            first = true;
-            for (; !rset.done(); ++rset) {
-                if (first) first = false;
-                else errmsg << ", ";
-                errmsg << rset->tag;
-            }
-            throw CommandException(errmsg.str());
         }
-
+        if (!options.removeTags.empty()) std::set_difference(z.tags().begin(), z.tags().end(), options.removeTags.begin(), options.removeTags.end(), std::back_inserter(newTags));
+        if (options.strictAdd && !options.addTags.empty()) {
+            std::set_intersection(options.addTags.begin(), options.addTags.end(), z.tags().begin(), z.tags().end(), std::back_inserter(diff));
+            if (!diff.empty()) {
+                stringstream errmsg("The following tags are already present: ");
+                first = true;
+                for (const string& tag : diff) {
+                    if (first) first = false;
+                    else errmsg << ", ";
+                    errmsg << tag;
+                }
+                throw CommandException(errmsg.str());
+            }
+        }
+        if (!options.addTags.empty()) std::set_union(newTags.begin(), newTags.end(), options.addTags.begin(), options.addTags.end(), std::back_inserter(newTags));
+        vector<string> tags;
+        std::copy(newTags.begin(), newTags.end(), std::back_inserter(tags));
+        z.setTags(tags);
+        
         if (!options.detailsOnly) {
             if (options.use_stdin) {
                 stringstream content;

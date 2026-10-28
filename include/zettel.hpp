@@ -39,6 +39,7 @@ public:
 
     void setTitle(std::string title);
     void addTag(std::string tag);
+    void setTags(const std::vector<std::string>& tags);
     ContentBlock* addContentBlock(std::unique_ptr<ContentBlock>&& block);
 
     void removeTag(std::string tag);
