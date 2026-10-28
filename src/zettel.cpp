@@ -8,7 +8,7 @@
 #include "format.hpp"
 #include "parser.hpp"
 
-using std::filesystem::path, std::ifstream, std::ofstream, std::string, std::stringstream, std::unique_ptr, std::vector;
+using std::filesystem::path, std::ifstream, std::ofstream, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
 
 namespace zettel {
 
@@ -28,7 +28,7 @@ const string& Zettel::title() const {
     return m_title;
 }
 
-const vector<string>& Zettel::tags() const {
+const set<string>& Zettel::tags() const {
     return m_tags;
 }
 
@@ -42,9 +42,9 @@ void Zettel::setTitle(string title) {
 
 void Zettel::addTag(string tag) {
     if (std::find(m_tags.cbegin(), m_tags.cend(), tag) != m_tags.cend()) return;
-    m_tags.push_back(tag);
+    m_tags.insert(tag);
 }
-void Zettel::setTags(const vector<string>& tags) {
+void Zettel::setTags(const set<string>& tags) {
     m_tags = tags;
 }
 
@@ -54,7 +54,7 @@ ContentBlock* Zettel::addContentBlock(unique_ptr<ContentBlock>&& block) {
 }
 
 void Zettel::removeTag(string tag) {
-    for (vector<string>::const_iterator it = m_tags.begin(); it != m_tags.end(); it++) {
+    for (set<string>::const_iterator it = m_tags.begin(); it != m_tags.end(); it++) {
         if (it->compare(tag) == 0) {
             m_tags.erase(it);
             break;

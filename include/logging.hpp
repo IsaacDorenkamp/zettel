@@ -33,6 +33,7 @@ public:
 private:
     std::ostream* m_stream;
     bool m_ansi;
+    std::mutex m_lock;
 };
 
 class CaptureLogHandler : public LogHandler {

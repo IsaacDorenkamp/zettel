@@ -213,16 +213,17 @@ void Index::update(const Zettel* zettel) {
     m_db->query("UPDATE zettel SET title=? WHERE id=?", sql::paramlist{ zettel->title(), (int)zettel->id() });
     stringstream query("DELETE FROM tag WHERE zettel_id = ? AND tag NOT IN (");
     query.seekp(0, std::ios_base::end);
-    vector<string> tags = zettel->tags();
-    // TODO: refactor to avoid querying within the loop
-    for (int i = 0; i < tags.size(); i++) {
-        m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?) ON CONFLICT (zettel_id, tag) DO NOTHING", sql::paramlist{tags[i], (int)zettel->id()});
+    vector<string> params;
+    std::copy(zettel->tags().begin(), zettel->tags().end(), std::back_inserter(params));
+    // TODO: refactor to avoid querying within the loop?
+    for (int i = 0; i < params.size(); i++) {
+        m_db->query("INSERT INTO tag (tag, zettel_id) VALUES (?, ?) ON CONFLICT (zettel_id, tag) DO NOTHING", sql::paramlist{params[i], (int)zettel->id()});
         if (i > 0) query << ", ";
         query << '?';
     }
     query << ')';
-    tags.insert(tags.begin(), std::to_string(zettel->id()));
-    m_db->query(query.str(), sql::paramvec<string>{tags});
+    params.insert(params.begin(), std::to_string(zettel->id()));
+    m_db->query(query.str(), sql::paramvec<string>{params});
     syncReferences(zettel);
     m_db->commit();
 }

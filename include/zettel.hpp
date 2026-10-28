@@ -3,6 +3,7 @@
 #include <exception>
 #include <filesystem>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -34,12 +35,12 @@ public:
 
     const Id& id() const;
     const std::string& title() const;
-    const std::vector<std::string>& tags() const;
+    const std::set<std::string>& tags() const;
     const std::vector<std::unique_ptr<ContentBlock>>& content() const;
 
     void setTitle(std::string title);
     void addTag(std::string tag);
-    void setTags(const std::vector<std::string>& tags);
+    void setTags(const std::set<std::string>& tags);
     ContentBlock* addContentBlock(std::unique_ptr<ContentBlock>&& block);
 
     void removeTag(std::string tag);
@@ -64,7 +65,7 @@ private:
     Id m_id;
     std::string m_title;
     std::filesystem::path m_path;
-    std::vector<std::string> m_tags;
+    std::set<std::string> m_tags;
     std::vector<std::unique_ptr<ContentBlock>> m_content;
 };
 

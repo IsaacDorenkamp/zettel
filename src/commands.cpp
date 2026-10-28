@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -76,8 +77,11 @@ static CheckResult checkZettel(const CheckTask& task) {
         }
     }
     std::set_difference(task.references.begin(), task.references.end(), refsInBody.begin(), refsInBody.end(), std::back_inserter(check.refsMissingFromFile));
-    std::set_difference(task.tags.begin(), task.tags.end(), parsed.tags().begin(), parsed.tags().end(), std::back_inserter(check.tagsMissingFromFile));
-    std::set_difference(parsed.tags().begin(), parsed.tags().end(), task.tags.begin(), task.tags.end(), std::back_inserter(check.tagsMissingFromIndex));
+    // we need to move tags into a set to preserve sorted order
+    set<string> parsedTagSet;
+    std::copy(parsed.tags().begin(), parsed.tags().end(), std::inserter(parsedTagSet, parsedTagSet.end()));
+    std::set_difference(task.tags.begin(), task.tags.end(), parsedTagSet.begin(), parsedTagSet.end(), std::back_inserter(check.tagsMissingFromFile));
+    std::set_difference(parsedTagSet.begin(), parsedTagSet.end(), task.tags.begin(), task.tags.end(), std::back_inserter(check.tagsMissingFromIndex));
     return check;
 }
 
@@ -206,7 +210,7 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
                 throw CommandException(errmsg.str());
             }
         }
-        if (!options.removeTags.empty()) std::set_difference(z.tags().begin(), z.tags().end(), options.removeTags.begin(), options.removeTags.end(), std::back_inserter(newTags));
+        if (!options.removeTags.empty()) std::set_difference(z.tags().begin(), z.tags().end(), options.removeTags.begin(), options.removeTags.end(), std::inserter(newTags, newTags.end()));
         if (options.strictAdd && !options.addTags.empty()) {
             std::set_intersection(options.addTags.begin(), options.addTags.end(), z.tags().begin(), z.tags().end(), std::back_inserter(diff));
             if (!diff.empty()) {
@@ -220,10 +224,8 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
                 throw CommandException(errmsg.str());
             }
         }
-        if (!options.addTags.empty()) std::set_union(newTags.begin(), newTags.end(), options.addTags.begin(), options.addTags.end(), std::back_inserter(newTags));
-        vector<string> tags;
-        std::copy(newTags.begin(), newTags.end(), std::back_inserter(tags));
-        z.setTags(tags);
+        if (!options.addTags.empty()) std::set_union(newTags.begin(), newTags.end(), options.addTags.begin(), options.addTags.end(), std::inserter(newTags, newTags.end()));
+        z.setTags(newTags);
         
         if (!options.detailsOnly) {
             if (options.use_stdin) {

@@ -10,7 +10,7 @@
 #include "parser.hpp"
 #include "zettel.hpp"
 
-using std::istringstream, std::make_shared, std::make_unique, std::set, std::shared_ptr, std::string, std::vector;
+using std::istringstream, std::make_shared, std::make_unique, std::map, std::set, std::shared_ptr, std::string, std::vector;
 using namespace zettel;
 
 class IndexFixture {
@@ -190,6 +190,7 @@ TEST_CASE_METHOD(IndexFixture, "search by text", "[index]") {
     m_idx->insert(&z);
     m_idx->insert(&z2);
     vector<models::zettel> results = m_idx->searchFullText("zettel", "/tmp");
+    INFO(fmt("result count: %zd", results.size()));
     REQUIRE(results.size() == 1);
     REQUIRE(results[0].id == 0);
 }
@@ -212,4 +213,15 @@ TEST_CASE_METHOD(IndexFixture, "delete a Zettel", "[index]") {
     REQUIRE(records.size() == 1);
     REQUIRE(records[0].level == logs::WARNING);
     REQUIRE(records[0].message.compare("A reference from 1 to 0 is now invalid") == 0);
+}
+
+TEST_CASE_METHOD(IndexFixture, "test lookup", "[index]") {
+    Zettel z1(0, "Ingress", "");
+    Zettel z2(1, "Hallway", "");
+    m_idx->insert(&z1);
+    m_idx->insert(&z2);
+    map<Zettel::Id, models::zettel> result = m_idx->lookup({0, 1});
+    REQUIRE(result.size() == 2);
+    REQUIRE(result.at(0).title.compare(z1.title()) == 0);
+    REQUIRE(result.at(1).title.compare(z2.title()) == 0);
 }

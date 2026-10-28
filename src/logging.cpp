@@ -6,8 +6,9 @@
 
 using std::map, std::pair, std::shared_ptr, std::string, std::vector;
 
-logs::StreamLogHandler::StreamLogHandler(std::ostream* stream, bool ansi) : m_stream(stream), m_ansi(ansi) {}
+logs::StreamLogHandler::StreamLogHandler(std::ostream* stream, bool ansi) : m_stream(stream), m_ansi(ansi), m_lock() {}
 void logs::StreamLogHandler::handle(const logs::LogRecord& record) {
+    std::lock_guard guard(m_lock);
     if (m_ansi) {
         ansi::ANSIBlock kind;
         kind.bold();
