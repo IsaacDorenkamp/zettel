@@ -111,7 +111,8 @@ struct Version {
 static const Version APP_VERSION = *Version::parse(ZETTEL_VERSION);
 static const set<Version> BW_COMPATIBLE = {
     Version{0, 0, 1},
-    Version{0, 0, 2}
+    Version{0, 0, 2},
+    Version{1, 0, 0}
 };
 
 int main(int argc, char **argv) {
