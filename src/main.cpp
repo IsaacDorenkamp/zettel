@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     argparse::ArgumentParser search_cmd("search");
     search_cmd.add_argument("term").required().help("The term to search against.");
     search_cmd.add_argument("--type").choices("tag", "title", "text").default_value("tag").help("The field to search against. Can search by tag (exact), title (similar), or (full) text (similar).");
-    search_cmd.add_description("Search for Zettels by tag.");
+    search_cmd.add_description("Search for Zettels by tag, title, or text.");
 
     argparse::ArgumentParser edit_cmd("edit");
     edit_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to edit.");
