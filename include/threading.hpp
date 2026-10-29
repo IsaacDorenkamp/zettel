@@ -95,9 +95,11 @@ public:
 
     void run() {
         try {
-            InObj inp = m_source->get();
-            OutObj result = m_task(inp);
-            m_sink->put(result);
+            while (true) {
+                InObj inp = m_source->get();
+                OutObj result = m_task(inp);
+                m_sink->put(result);
+            }
         } catch (const typename ThreadSafeQueue<InObj>::Shutdown& exc) {}
     }
 private:
