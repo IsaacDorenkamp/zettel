@@ -110,7 +110,8 @@ struct Version {
 
 static const Version APP_VERSION = *Version::parse(ZETTEL_VERSION);
 static const set<Version> BW_COMPATIBLE = {
-    Version{0, 0, 1}
+    Version{0, 0, 1},
+    Version{0, 0, 2}
 };
 
 int main(int argc, char **argv) {
@@ -209,9 +210,15 @@ int main(int argc, char **argv) {
             } else {
                 optional<Version> parsed = Version::parse(version);
                 if (parsed) {
-                    // different patch versions should be compatible
-                    if (*parsed != APP_VERSION && BW_COMPATIBLE.find(*parsed) == BW_COMPATIBLE.end())
-                        throw cmd::CommandException(fmt("META specifies a version (%s) which is not compatible with this version of Zettel (%s)", version.c_str(), ZETTEL_VERSION));
+                    if (*parsed != APP_VERSION) {
+                        if (BW_COMPATIBLE.find(*parsed) != BW_COMPATIBLE.end()) {
+                            // update version in META
+                            zettelmeta["version"] = ZETTEL_VERSION;
+                            meta::write(ctx.dotdir / "META", zettelmeta);
+                        } else {
+                            throw cmd::CommandException(fmt("META specifies a version (%s) which is not compatible with this version of Zettel (%s)", version.c_str(), ZETTEL_VERSION));
+                        }
+                    }
                 } else {
                     throw cmd::CommandException(fmt("META specifies malformed version %s", version.c_str()));
                 }
