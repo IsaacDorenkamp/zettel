@@ -12,6 +12,23 @@ programs and don't want this fluff passed along, `--quiet` or `-q` will suppress
 suppressed, since they are written to standard error and not standard output.  To suppress these, redirect standard error to /dev/null
 (or NUL on Windows).
 
+# Anatomy of a Zettel
+A Zettel has an ID, a Title, Tags, and a Body. The ID is automatically generated and uniquely identifies a Zettel. The Title is a brief
+description of what the Zettel is about. Tags are short, lowercase strings that denote what categories a Zettel belongs to. The Body of
+the Zettel is its main content. The Body is primarily plain text, but it supports the usage of Markdown-style links. These links can
+be regular web links, like `[google](https://google.com)`, but `zettel` also supports referencing other Zettels with simple URIs using
+the `zettel` scheme with the ID of the Zettel to reference: `[link to another zettel](zettel:123)`. Zettels are stored in a text file
+with the following format:
+```
+[ID] Title
+#this #line #contains #tags
+|The content of the Zettel follows as a series of lines, each beginning with a '|'.
+|Each line may be of arbitrary length, but it must begin with a '|'.
+```
+It is not recommended to manually modify these files. Modifying the title or tags will bring the file out of sync with the database, which
+may cause confusing behavior. `zettel check` can be used in case a file gets corrupted or deleted to inform you of the ways in which the
+file structure is out of sync with the database. Ideally, just use `zettel` to perform operations in your digital Zettelkasten.
+
 # Commands
 
 ### `zettel init`
@@ -72,3 +89,4 @@ will exit with a successful status code.
 - `zettel check` does not verify Zettel titles.
 - `zettel view` always returns a failing status code on exit due to being terminated by Ctrl-C.
 - `zettel search` does not output results in the same format as `zettel list`.
+- `zettel edit` may append a newline to a Zettel's content when using `--details-only`.
