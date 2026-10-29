@@ -9,19 +9,20 @@
 #include "format.hpp"
 #include "logging.hpp"
 #include "sys.hpp"
+#include "tui.hpp"
 #include "uri.hpp"
 #include "zettel.hpp"
 
-using std::map, std::pair, std::set, std::string, std::unique_ptr;
+using std::map, std::pair, std::set, std::string, std::unique_ptr, std::vector;
 using zettel::cmd::Context;
 
 namespace zettel {
 
 Viewer::Viewer(const Zettel* zettel, const Context& ctx) : m_ctx(&ctx), m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
 void Viewer::configure() {
-    init_pair(1, COLOR_BLUE, COLOR_BLACK);
-    init_pair(2, COLOR_BLACK, COLOR_BLUE);
-    init_pair(3, COLOR_RED, COLOR_BLACK);
+    m_linkDefault = tui::register_color_pair(COLOR_BLUE, COLOR_BLACK);
+    m_linkHover = tui::register_color_pair(COLOR_BLACK, COLOR_BLUE);
+    m_bad = tui::register_color_pair(COLOR_RED, COLOR_BLACK);
     curs_set(0);
 
     int rows, cols;
@@ -86,10 +87,10 @@ void Viewer::setZettel(const Zettel* zettel) {
             try {
                 URI uri = URI::parse(ref->uri());
                 m_links.push_back({uri, trange});
-                attr |= COLOR_PAIR(1);
+                attr |= COLOR_PAIR(m_linkDefault);
             } catch (const URI::Exception& exc) {
                 m_links.push_back({URI(), trange});
-                attr |= COLOR_PAIR(3);
+                attr |= COLOR_PAIR(m_bad);
             }
             wattron(m_main, attr);
             err = wprintw(m_main, "%s", displayText.c_str());
@@ -118,9 +119,9 @@ void Viewer::setZettel(const Zettel* zettel) {
                 tui::pos here{y, x};
                 tui::range trange{ here, here.move(m_mainScreen, entry.second.title.size()) };
                 m_links.push_back({URI("zettel", std::nullopt, std::to_string(entry.first), std::nullopt, std::nullopt), trange});
-                wattron(m_main, A_UNDERLINE | COLOR_PAIR(1));
+                wattron(m_main, A_UNDERLINE | COLOR_PAIR(m_linkDefault));
                 err = waddstr(m_main, entry.second.title.c_str());
-                wattroff(m_main, A_UNDERLINE | COLOR_PAIR(1));
+                wattroff(m_main, A_UNDERLINE | COLOR_PAIR(m_linkDefault));
                 if (err) break;
             }
         }
@@ -184,9 +185,9 @@ void Viewer::run() {
 
 void Viewer::error(string message) {
     wmove(m_bottom, 0, 0);
-    wattron(m_bottom, COLOR_PAIR(3) | A_BOLD);
+    wattron(m_bottom, COLOR_PAIR(m_bad) | A_BOLD);
     waddstr(m_bottom, "ERROR ");
-    wattroff(m_bottom, COLOR_PAIR(3) | A_BOLD);
+    wattroff(m_bottom, COLOR_PAIR(m_bad) | A_BOLD);
     waddstr(m_bottom, message.substr(0, m_screen.cols - 6).c_str());
     wrefresh(m_bottom);
 }
@@ -251,12 +252,12 @@ void Viewer::deselectCurrentLink() {
     if (m_link != -1) {
         tui::range current = m_links[m_link].second;
         wmove(m_main, current.start.y, current.start.x);
-        wattron(m_main, COLOR_PAIR(1) | A_BOLD);
+        wattron(m_main, COLOR_PAIR(m_linkDefault) | A_BOLD);
         for (pos = current.start.scrpos(m_mainScreen), index = 0; pos < current.end.scrpos(m_mainScreen); pos++, index++) {
             scrpos = tui::pos(m_mainScreen, pos);
             waddch(m_main, mvwinch(m_main, scrpos.y, scrpos.x) & A_CHARTEXT | A_UNDERLINE);
         }
-        wattroff(m_main, COLOR_PAIR(1) | A_BOLD);
+        wattroff(m_main, COLOR_PAIR(m_linkDefault) | A_BOLD);
     }
     wrefresh(m_main);
 }
@@ -270,7 +271,7 @@ void Viewer::nextLink() {
     int pos, index;
     tui::pos scrpos{0, 0};
     m_link = (m_link + 1) % m_links.size();
-    wattron(m_main, COLOR_PAIR(2));
+    wattron(m_main, COLOR_PAIR(m_linkHover));
     wattroff(m_main, A_UNDERLINE);
     tui::range current = m_links[m_link].second;
     wmove(m_main, current.start.y, current.start.x);
@@ -278,24 +279,41 @@ void Viewer::nextLink() {
         scrpos = tui::pos(m_mainScreen, pos);
         waddch(m_main, mvwinch(m_main, scrpos.y, scrpos.x) & A_CHARTEXT);
     }
-    wattroff(m_main, COLOR_PAIR(2));
+    wattroff(m_main, COLOR_PAIR(m_linkHover));
     wrefresh(m_main);
 }
 
 void Viewer::drawTrail() {
+    static const std::string separator = " > ";
     wmove(m_top, 0, 0);
     wclrtoeol(m_top);
     // TODO: What if this gets too long?
     Zettel::Id id;
     const Zettel* z;
-    for (size_t index = 0; index < m_chain.size(); index++) {
-        id = m_chain[index];
+    uint16_t remaining = m_mainScreen.cols;
+    vector<ansi::block> blocks;
+    for (vector<Zettel::Id>::const_reverse_iterator it = m_chain.crbegin(); it != m_chain.crend() && remaining > 0; it++) {
+        id = *it;
         z = &m_cache.at(id);
-        if (index > 0) waddstr(m_top, " > ");
-        wattron(m_top, A_ITALIC);
-        waddstr(m_top, z->title().c_str());
-        wattroff(m_top, A_ITALIC);
+        if (it != m_chain.crbegin()) {
+            if (remaining >= 3) {
+                blocks.insert(blocks.begin(), ansi::block(separator));
+                remaining -= 3;
+            } else {
+                blocks.insert(blocks.begin(), ansi::block(separator.substr(separator.size() - remaining, remaining)));
+                remaining = 0;
+            }
+        }
+        if (remaining < z->title().size()) {
+            blocks.insert(blocks.begin(), ansi::block(z->title().substr(z->title().size() - remaining, remaining)).italic(true));
+            remaining = 0;
+        } else {
+            blocks.insert(blocks.begin(), ansi::block(z->title()).italic(true));
+            remaining -= blocks[0].text().size();
+        }
     }
+    wmove(m_top, 0, 0);
+    for (const ansi::block& block : blocks) tui::render_ansi(m_top, block);
     wrefresh(m_top);
 }
 

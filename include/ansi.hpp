@@ -37,6 +37,7 @@ public:
     Color background() const;
 
     ANSIBlock& setText(std::string text);
+    const std::string& text() const;
     std::string toString() const;
 
     static unsigned char BOLD;

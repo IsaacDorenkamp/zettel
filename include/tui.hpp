@@ -4,6 +4,8 @@
 #include <exception>
 #include <type_traits>
 
+#include "ansi.hpp"
+
 namespace tui {
 
 struct screen {
@@ -29,6 +31,8 @@ struct range {
     pos end;
 };
 
+int register_color_pair(int fg, int bg);
+void render_ansi(WINDOW* window, const ansi::block& block);
 
 template <class Fn, std::enable_if_t<std::is_invocable<Fn>::value, bool> = true>
 void run_curses(const Fn& app) {

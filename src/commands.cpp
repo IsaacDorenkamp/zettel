@@ -133,11 +133,22 @@ void initialize(const Context& ctx) {
 unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     std::string content;
     if (opts.edit) {
-        unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
-        try {
-            content = ed->readInput();
-        } catch (const zettel::Editor::Exception& exc) {
-            throw CommandException(fmt("Unable to read input from editor: %s", exc.what()));
+        if (opts.use_stdin) {
+            stringstream s;
+            unique_ptr<char[]> buf = make_unique<char[]>(1024);
+            size_t bytesRead;
+            while ((bytesRead = fread(buf.get(), 1, 1024, stdin))) {
+                s << std::string_view(buf.get(), bytesRead);
+            }
+            if (ferror(stdin)) throw CommandException("Error reading stdin");
+            content = s.str();
+        } else {
+            unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
+            try {
+                content = ed->readInput();
+            } catch (const zettel::Editor::Exception& exc) {
+                throw CommandException(fmt("Unable to read input from editor: %s", exc.what()));
+            }
         }
     }
 
@@ -166,6 +177,19 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
         ctx.index->rollback();
         throw CommandException(fmt("Error updating index: %s", exc.what()));
     }
+
+    if (opts.report) {
+        cout << result->id() << endl;
+        cout << result->title() << endl;
+        bool first = true;
+        for (const string& tag : result->tags()) {
+            if (first) first = false;
+            else cout << ',';
+            cout << tag;
+        }
+        cout << endl;
+    }
+
     return result;
 }
 
@@ -228,6 +252,7 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
         z.setTags(newTags);
         
         if (!options.detailsOnly) {
+            string newContent;
             if (options.use_stdin) {
                 stringstream content;
                 unique_ptr<char[]> buf = make_unique<char[]>(1024);
@@ -236,20 +261,20 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
                     content << std::string_view(buf.get(), bytesRead);
                 }
                 if (ferror(stdin)) throw CommandException("Error reading stdin");
+                newContent = content.str();
             } else {
                 unique_ptr<Editor> ed = Editor::getInstance(ctx.dotdir);
                 stringstream defaultContent;
                 for (const unique_ptr<ContentBlock>& block : z.content()) {
                     defaultContent << block->format(PLAINTEXT_FORMAT);
                 }
-                string updatedContent = ed->readInput(defaultContent.str());
-                z.clearContent();
-
-                stringstream rawContent(updatedContent);
-                rawContent.seekg(0);
-                unique_ptr<Parser> p(new DefaultParser(rawContent));
-                while (!p->done()) z.addContentBlock(p->next());
+                newContent = ed->readInput(defaultContent.str());
             }
+            z.clearContent();
+            stringstream rawContent(newContent);
+            rawContent.seekg(0);
+            unique_ptr<Parser> p(new DefaultParser(rawContent));
+            while (!p->done()) z.addContentBlock(p->next());
         }
 
         ctx.index->begin();

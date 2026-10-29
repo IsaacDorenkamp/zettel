@@ -129,6 +129,8 @@ int main(int argc, char **argv) {
         .append()
         .help("A tag which is used to identify the Zettel.");
     new_cmd.add_argument("--noedit").flag().help("If specified, create the Zettel without any content instead of immediately editing.");
+    new_cmd.add_argument("--stdin").flag().help("If specified, get input from standard input instead of opening the editor program.");
+    new_cmd.add_argument("--report").flag().help("If specified, write unformatted information about the created note to standard output. Writes three lines: the ID, the title, and a comma-separated list of tags.");
     new_cmd.add_description("Create a new Zettel.");
 
     argparse::ArgumentParser list_cmd("list");
@@ -143,7 +145,7 @@ int main(int argc, char **argv) {
     edit_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to edit.");
     edit_cmd.add_argument("--title").help("The new title for this Zettel.");
     edit_cmd.add_argument("--details-only").flag().help("Do not update the body of the Zettel, only its details (e.g. title).");
-    edit_cmd.add_argument("--stdin").flag().help("Instead of opening an editor to modify the body of the Zettel, use the input from stdin.");
+    edit_cmd.add_argument("--stdin").flag().help("Instead of opening an editor to modify the body of the Zettel, use the input from standard input.");
     edit_cmd.add_argument("--tag", "-t")
         .default_value<vector<string>>({})
         .append()
@@ -223,7 +225,9 @@ int main(int argc, char **argv) {
             cmd::NewOptions opts{
                 new_cmd.get<string>("title"),
                 new_cmd.get<vector<string>>("--tag"),
-                !new_cmd.get<bool>("--noedit")
+                !new_cmd.get<bool>("--noedit"),
+                new_cmd.get<bool>("--stdin"),
+                new_cmd.get<bool>("--report")
             };
             unique_ptr<Zettel> z = cmd::make_new(ctx, opts);
             if (!quiet) cout << ansi::block("Created").foreground(ansi::Color::GREEN).bold(true) << " Zettel "

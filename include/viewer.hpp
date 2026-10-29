@@ -48,6 +48,10 @@ private:
     std::vector<Zettel::Id> m_chain;
     std::map<Zettel::Id, Zettel> m_cache;
     int m_link;
+
+    int m_linkDefault;
+    int m_linkHover;
+    int m_bad;
 };
 
 }

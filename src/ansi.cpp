@@ -94,9 +94,21 @@ bool ANSIBlock::strikethrough() const {
     return (m_flags & ANSIBlock::STRIKETHROUGH) != 0;
 }
 
+Color ANSIBlock::foreground() const {
+    return m_fg;
+}
+
+Color ANSIBlock::background() const {
+    return m_bg;
+}
+
 ANSIBlock& ANSIBlock::setText(string text) {
     m_text = text;
     return *this;
+}
+
+const string& ANSIBlock::text() const {
+    return m_text;
 }
 
 string ANSIBlock::toString() const {

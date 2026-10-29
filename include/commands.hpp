@@ -32,6 +32,8 @@ struct NewOptions {
     std::string title;
     std::vector<std::string> tags;
     bool edit;
+    bool use_stdin;
+    bool report;
 };
 
 enum class SearchType {
