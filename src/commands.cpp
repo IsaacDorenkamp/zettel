@@ -41,6 +41,7 @@ struct CheckResult {
     std::vector<zettel::Zettel::Id> refsMissingFromFile;
     std::vector<std::string> tagsMissingFromIndex;
     std::vector<std::string> tagsMissingFromFile;
+    std::optional<std::string> mismatchedTitle;
 };
 
 }
@@ -82,6 +83,7 @@ static CheckResult checkZettel(const CheckTask& task) {
     std::copy(parsed.tags().begin(), parsed.tags().end(), std::inserter(parsedTagSet, parsedTagSet.end()));
     std::set_difference(task.tags.begin(), task.tags.end(), parsedTagSet.begin(), parsedTagSet.end(), std::back_inserter(check.tagsMissingFromFile));
     std::set_difference(parsedTagSet.begin(), parsedTagSet.end(), task.tags.begin(), task.tags.end(), std::back_inserter(check.tagsMissingFromIndex));
+    if (parsed.title().compare(task.subject.title) != 0) check.mismatchedTitle = parsed.title();
     return check;
 }
 
@@ -193,20 +195,29 @@ unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& opts) {
     return result;
 }
 
-vector<models::zettel> search(const Context& ctx, const SearchOptions& options) {
+size_t search(const Context& ctx, const SearchOptions& options) {
+    vector<models::zettel> results;
     try {
         switch (options.type) {
         case SearchType::Tag:
-            return ctx.index->searchTag(options.term);
+            results = ctx.index->searchTag(options.term);
+            break;
         case SearchType::Title:
-            return ctx.index->searchTitle(options.term);
+            results = ctx.index->searchTitle(options.term);
+            break;
         case SearchType::FullText:
-            return ctx.index->searchFullText(options.term, ctx.root);
+            results = ctx.index->searchFullText(options.term, ctx.root);
+            break;
         }
     } catch (const sql::SQLite::Exception& exc) {
         throw CommandException(fmt("Error searching index: %s", exc.what()));
     }
-    throw CommandException(fmt("Unknown search type '%d'", options.type));
+    for (const models::zettel& result : results) {
+        if (options.plain) cout << result.id << ' ' << result.title << endl;
+        else cout << ansi::block(std::to_string(result.id)).dim(true) << ' '
+            << ansi::block(result.title).bold(true) << endl;
+    }
+    return results.size();
 }
 
 #define ENSURE_EXISTS(ctx, id) if (!ctx.index->exists(id)) throw CommandException(fmt("No Zettel with ID %d", id))
@@ -377,6 +388,11 @@ uint32_t check(const Context& ctx) {
             issues++;
             logs::error("Zettel '%s' (ID %u) is malformed: %s", result.subject.title.c_str(), result.subject.id, result.error->c_str());
             continue;
+        }
+        if (result.mismatchedTitle) {
+            issues++;
+            logs::warn("Zettel '%s' (ID %u) has a mismatched title in its file (%s)",
+                result.subject.title.c_str(), result.subject.id, result.mismatchedTitle->c_str());
         }
         for (const Zettel::Id& id : result.refsMissingFromIndex) {
             issues++;

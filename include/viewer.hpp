@@ -33,6 +33,7 @@ private:
     void drawTrail();
     void drawKeyBinds();
     void open(const URI& uri);
+    void quit();
 
     Zettel* getZettel(const Zettel::Id& id);
 

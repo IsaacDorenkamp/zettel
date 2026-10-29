@@ -112,7 +112,8 @@ static const Version APP_VERSION = *Version::parse(ZETTEL_VERSION);
 static const set<Version> BW_COMPATIBLE = {
     Version{0, 0, 1},
     Version{0, 0, 2},
-    Version{1, 0, 0}
+    Version{1, 0, 0},
+    Version{1, 0, 1}
 };
 
 int main(int argc, char **argv) {
@@ -141,6 +142,7 @@ int main(int argc, char **argv) {
     argparse::ArgumentParser search_cmd("search");
     search_cmd.add_argument("term").required().help("The term to search against.");
     search_cmd.add_argument("--type").choices("tag", "title", "text").default_value("tag").help("The field to search against. Can search by tag (exact), title (similar), or (full) text (similar).");
+    search_cmd.add_argument("--plain").flag().help("When set, output will not contain ANSI escape codes.");
     search_cmd.add_description("Search for Zettels by tag, title, or text.");
 
     argparse::ArgumentParser edit_cmd("edit");
@@ -259,13 +261,13 @@ int main(int argc, char **argv) {
             cmd::SearchOptions opts{
                 type,
                 search_cmd.get<string>("term"),
+                search_cmd.get<bool>("--plain")
             };
-            vector<models::zettel> results = cmd::search(ctx, opts);
-            for (const models::zettel& entry : results) cout << entry.title << " (ID " << entry.id << ")" << endl;
+            size_t nresults = cmd::search(ctx, opts);
             if (!quiet) cout << ansi::block("Found ").italic(true) << ansi::block(
-                    std::to_string(results.size())
-                ).bold(true).italic(true).foreground(results.size() == 0 ? ansi::Color::RED : ansi::Color::WHITE)
-                << ansi::block(" result" + string(results.size() != 1 ? "s" : "")).italic(true) << endl;
+                    std::to_string(nresults)
+                ).bold(true).italic(true).foreground(nresults == 0 ? ansi::Color::RED : ansi::Color::WHITE)
+                << ansi::block(" result" + string(nresults != 1 ? "s" : "")).italic(true) << endl;
         } else if (program.is_subcommand_used("edit")) {
             string strict = edit_cmd.get<string>("--strict");
             bool allStrict = strict.compare("all") == 0;

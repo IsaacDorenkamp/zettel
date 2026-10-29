@@ -9,7 +9,7 @@
 #include "index.hpp"
 #include "zettel.hpp"
 
-#define ZETTEL_VERSION "1.0.1"
+#define ZETTEL_VERSION "1.1.0"
 
 namespace zettel {
 
@@ -43,6 +43,7 @@ enum class SearchType {
 struct SearchOptions {
     SearchType type;
     std::string term;
+    bool plain;
 };
 
 struct EditOptions {
@@ -71,7 +72,7 @@ struct ListOptions {
 };
 
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
-std::vector<models::zettel> search(const Context& ctx, const SearchOptions& options);
+size_t search(const Context& ctx, const SearchOptions& options);
 std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
 void remove(const Context& ctx, const DeleteOptions& options);
 void view(const Context& ctx, const ViewOptions& options);

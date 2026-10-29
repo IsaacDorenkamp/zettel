@@ -63,8 +63,8 @@ ID is dimmed through ANSI magic, but you can pass `--plain` to receive pure plai
 One of the core features of `zettel`, `zettel search` enables the user to search for Zettels based on title, tag, or text. Tag searches are the
 default, so `zettel search some-tag` will search for Zettels with the tag "some-tag". However, you can explicitly denote a search as a tag search
 by passing `--type tag`. To search by title, pass `--type title`. To do a full-text search, pass `--type text`. Full-text searches are the most
-expensive searches, but as can be seen by running `stress_test_fulltext_search.py`, it still runs extremely quickly. Each search result is printed
-on its own line, in the format "[Title] (ID [ID])" (NOTE: The author intends to bring this into line with `zettel list` in the future).
+expensive searches, but as can be seen by running `stress_test_fulltext_search.py`, it still runs extremely quickly. The search results are presented
+in the same format as the results of `zettel list`, including the option to pass `--plain`.
 
 ### `zettel delete`
 It is unlikely that you will find yourself deleting many Zettels, especially since the philosophy of the Zettelkasten is to grow over into a complex
@@ -85,8 +85,6 @@ entails ensuring that its file actually exists, that all of its references match
 logged to standard output and the program will exit with a failing status code. If there are no issues, this will be acknowledged and the program
 will exit with a successful status code.
 
-# Caveats/Known Issues
-- `zettel check` does not verify Zettel titles.
-- `zettel view` always returns a failing status code on exit due to being terminated by Ctrl-C.
-- `zettel search` does not output results in the same format as `zettel list`.
-- `zettel edit` may append a newline to a Zettel's content when using `--details-only`.
+# Window Support Pending
+I wrote this program on Apple and Linux devices, and so didn't take the time to add support for Windows. However, Windows support will be added in
+the future.

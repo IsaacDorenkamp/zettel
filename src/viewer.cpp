@@ -1,6 +1,7 @@
 #include "viewer.hpp"
 
 #include <curses.h>
+#include <signal.h>
 #include <algorithm>
 #include <stdexcept>
 
@@ -16,10 +17,21 @@
 using std::map, std::pair, std::set, std::string, std::unique_ptr, std::vector;
 using zettel::cmd::Context;
 
+static void cleanExit(int) {
+    endwin();
+    exit(0);
+}
+
 namespace zettel {
 
 Viewer::Viewer(const Zettel* zettel, const Context& ctx) : m_ctx(&ctx), m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
 void Viewer::configure() {
+    struct sigaction sa;
+    sa.sa_handler = &cleanExit;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGINT, &sa, NULL) == -1) throw cmd::CommandException("Unable to start the viewer.");
+
     m_linkDefault = tui::register_color_pair(COLOR_BLUE, COLOR_BLACK);
     m_linkHover = tui::register_color_pair(COLOR_BLACK, COLOR_BLUE);
     m_bad = tui::register_color_pair(COLOR_RED, COLOR_BLACK);

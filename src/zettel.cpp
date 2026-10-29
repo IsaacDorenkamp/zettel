@@ -122,11 +122,13 @@ void Zettel::save() {
         string formatted = body.str();
         body.str("|");
         body.seekp(1);
+        bool lastNewline = false;
         for (char c : formatted) {
-            if (c == '\n') body << "\n|";
-            else body << c;
+            if (lastNewline) body << '|';
+            lastNewline = c == '\n';
+            body << c;
         }
-        body << '\n';
+        if (!lastNewline) body << '\n';
         out << body.str();
         out.close();
     } catch (const ofstream::failure& exc) {
