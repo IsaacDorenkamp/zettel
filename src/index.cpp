@@ -1,6 +1,5 @@
 #include "index.hpp"
 
-#include <fstream>
 #include <memory>
 #include <set>
 #include <string>
@@ -9,44 +8,11 @@
 
 #include "format.hpp"
 #include "logging.hpp"
+#include "search.hpp"
 #include "threading.hpp"
 #include "zettel.hpp"
 
 using std::map, std::optional, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
-
-struct FullTextSearchQuery {
-    string term;
-    std::filesystem::path file;
-};
-
-struct FullTextSearchResult {
-    optional<zettel::models::zettel> match;
-    string matchText;
-};
-
-static std::variant<FullTextSearchResult, string> checkFile(const FullTextSearchQuery& query) {
-    using std::ifstream;
-    using zettel::Zettel;
-    try {
-        Zettel z = Zettel::load(query.file);
-        // first, get plaintext body of zettel
-        stringstream contentss;
-        for (const std::unique_ptr<zettel::ContentBlock>& block : z.content()) contentss << block->format(zettel::PLAINTEXT_FORMAT);
-        string content(contentss.str());
-        // TODO: This search method is very simplistic and inflexible. In the future, a more advanced and flexible one should be used.
-        size_t matchAt = content.find(query.term);
-        if (matchAt == string::npos) {
-            return FullTextSearchResult{std::nullopt, ""};
-        } else {
-            return FullTextSearchResult{
-                zettel::models::zettel{z.id(), z.title()},
-                query.term
-            };
-        }
-    } catch (const zettel::ZettelException& exc) {
-        return exc.what();
-    }
-}
 
 namespace zettel {
 
@@ -135,7 +101,7 @@ vector<models::zettel> Index::searchFullText(string term, const std::filesystem:
     }
     queries.shutdown();
 
-    sys::ThreadPool<FullTextSearchQuery, std::variant<FullTextSearchResult, string>> pool(queries, searchResults, &checkFile);
+    sys::ThreadPool<FullTextSearchQuery, std::variant<FullTextSearchResult, string>> pool(queries, searchResults, &searchFile);
     pool.execute(4);
 
     searchResults.sink<vector<models::zettel>, models::zettel>(results, [](std::variant<FullTextSearchResult, string> result) -> optional<models::zettel> {

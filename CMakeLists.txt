@@ -51,6 +51,7 @@ set(COMMON_SOURCES
     "src/zettel.cpp"
     "src/sql.cpp"
     "src/parser.cpp"
+    "src/search.cpp"
     "src/sys.cpp"
     "src/tui.cpp"
     "src/uri.cpp"
@@ -65,6 +66,7 @@ set(TEST_SOURCES
     "src/test_index.cpp"
     "src/test_sql.cpp"
     "src/test_parser.cpp"
+    "src/test_search.cpp"
     "src/test_tui.cpp"
     "src/test_uri.cpp"
 )
