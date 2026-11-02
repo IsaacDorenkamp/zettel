@@ -1,6 +1,7 @@
 #include "commands.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -200,13 +201,13 @@ size_t search(const Context& ctx, const SearchOptions& options) {
     try {
         switch (options.type) {
         case SearchType::Tag:
-            results = ctx.index->searchTag(options.term);
+            results = ctx.index->searchTag(options.caseSensitive ? options.term : lowercase(options.term));
             break;
         case SearchType::Title:
-            results = ctx.index->searchTitle(options.term);
+            results = ctx.index->searchTitle(options.term, options.caseSensitive);
             break;
         case SearchType::FullText:
-            results = ctx.index->searchFullText(options.term, ctx.root);
+            results = ctx.index->searchFullText(options.term, ctx.root, options.caseSensitive);
             break;
         }
     } catch (const sql::SQLite::Exception& exc) {

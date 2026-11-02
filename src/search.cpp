@@ -1,5 +1,6 @@
 #include "search.hpp"
 
+#include <boost/regex.hpp>
 #include <sstream>
 
 using std::optional, std::string, std::stringstream, std::variant;
@@ -7,7 +8,9 @@ using zettel::Zettel;
 
 namespace zettel {
 
-SequentialMatcher::SequentialMatcher(string source, string query) : m_source(source), m_query(query), m_index(0), m_state(State::Searching),
+Matcher::Matcher(string source, string query) : m_source(source), m_query(query) {}
+
+SequentialMatcher::SequentialMatcher(string source, string query) : Matcher(source, query), m_index(0), m_state(State::Searching),
     m_startedAt(0), m_possibleMatch(), m_error(), m_match() {}
 SequentialMatcher::State SequentialMatcher::update() {
     char c = m_source[m_index];
@@ -95,14 +98,30 @@ bool TermMatcher::matches(char a, char b) const {
     }
 }
 
+RegexMatcher::RegexMatcher(string source, string query) : Matcher(source, query), m_start(source.begin()), m_end(source.end()), m_expression(query), m_flags(boost::match_default), m_match() {}
+optional<Matcher::Match> RegexMatcher::next() {
+    optional<Matcher::Match> result = std::nullopt;
+    if (boost::regex_search(m_start, m_end, m_match, m_expression, m_flags)) {
+        result = {
+            m_match[0].first - m_source.begin(),
+            m_match[0].str()
+        };
+        m_start = m_match[0].second;
+        m_flags |= boost::match_prev_avail | boost::match_not_bob;
+    }
+    return result;
+}
+
 optional<Matcher::Match> search(string source, string query, SearchType type) {
     using std::unique_ptr;
     unique_ptr<Matcher> matcher;
-    switch (type) {
-    case SearchType::TermCS:
-        matcher = unique_ptr<Matcher>(new TermMatcher(source, query, true));
-    case SearchType::TermCI:
-        matcher = unique_ptr<Matcher>(new TermMatcher(source, query, false));
+    switch (type.type) {
+    case TermType::Substring:
+        matcher = unique_ptr<Matcher>(new TermMatcher(source, query, type.caseSensitive));
+        break;
+    case TermType::Regex:
+        matcher = unique_ptr<Matcher>(new RegexMatcher(source, query));
+        break;
     }
     optional<Matcher::Match> match = matcher->next();
     if (match) return *match;
@@ -118,7 +137,7 @@ variant<FullTextSearchResult, string> searchFile(const FullTextSearchQuery& quer
         stringstream contentss;
         for (const std::unique_ptr<zettel::ContentBlock>& block : z.content()) contentss << block->format(zettel::PLAINTEXT_FORMAT);
         string content(contentss.str());
-        optional<Matcher::Match> match = search(content, query.term, SearchType::TermCI);
+        optional<Matcher::Match> match = search(content, query.term, {TermType::Substring, false});
         if (match) {
             return FullTextSearchResult{
                 zettel::models::zettel{z.id(), z.title()},
@@ -129,6 +148,27 @@ variant<FullTextSearchResult, string> searchFile(const FullTextSearchQuery& quer
         }
     } catch (const zettel::ZettelException& exc) {
         return exc.what();
+    }
+}
+
+const SearchType SearchType::SubstringCI{TermType::Substring, false};
+const SearchType SearchType::SubstringCS{TermType::Substring, true};
+const SearchType SearchType::RegexCI{TermType::Substring, false};
+const SearchType SearchType::RegexCS{TermType::Substring, true};
+
+void FullTextSearchQuery::parseAndSetTerm(const string& str) {
+    std::string_view view(str);
+    if (view.empty()) {
+        term = "";
+        return;
+    }
+    if (view.front() == '/') {
+        // string_view::substr is far faster than string::substr
+        for (char c : view.substr(1)) {
+            // TODO: try to find matching '/'
+        }
+    } else {
+        term = str;
     }
 }
 

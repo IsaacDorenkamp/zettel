@@ -77,26 +77,29 @@ vector<models::zettel> Index::searchTag(string tag) {
     return sql::gather(rset);
 }
 
-vector<models::zettel> Index::searchTitle(string title) {
+vector<models::zettel> Index::searchTitle(string title, bool caseSensitive) {
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
-        "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE ?",
-        sql::paramlist{fmt("%%%s%%", title.c_str())}
+        caseSensitive ? "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE ?"
+            : "SELECT zettel.id, zettel.title FROM zettel WHERE LOWER(zettel.title) LIKE ?",
+        sql::paramlist{fmt("%%%s%%", caseSensitive ? title.c_str() : lowercase(title).c_str())}
     );
     return sql::gather(rset);
 }
 
-vector<models::zettel> Index::searchFullText(string term, const std::filesystem::path& root) {
+vector<models::zettel> Index::searchFullText(string term, const std::filesystem::path& root, bool caseSensitive) {
     // TODO: Find some way to make this more efficient??
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel");
     sys::ThreadSafeQueue<FullTextSearchQuery> queries;
     sys::ThreadSafeQueue<std::variant<FullTextSearchResult, string>> searchResults;
 
+    SearchType type;
     for (const models::zettel& entry : sql::gather(rset)) {
         queries.put(FullTextSearchQuery{
             term,
-            root / Zettel::getFilenameForId(entry.id)
+            root / Zettel::getFilenameForId(entry.id),
+            type
         });
     }
     queries.shutdown();

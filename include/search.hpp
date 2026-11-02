@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/regex.hpp>
 #include <filesystem>
 #include <optional>
 #include <sstream>
@@ -13,9 +14,13 @@ namespace zettel {
 
 class Matcher {
 public:
+    Matcher(std::string source, std::string query);
     virtual ~Matcher() = default;
     using Match = std::pair<size_t, std::string>;
     virtual std::optional<Match> next() = 0;
+protected:
+    std::string m_source;
+    std::string m_query;
 };
 
 class SequentialMatcher : public Matcher {
@@ -47,8 +52,6 @@ public:
 protected:
     State update();
     State error(const std::string& err);
-    std::string m_source;
-    std::string m_query;
     size_t m_index;
 private:
     State m_state;
@@ -70,8 +73,30 @@ private:
     bool m_caseSensitive;
 };
 
-enum class SearchType {
-    TermCS, TermCI
+class RegexMatcher : public Matcher {
+public:
+    RegexMatcher(std::string source, std::string query);
+    virtual ~RegexMatcher() = default;
+    virtual std::optional<Match> next();
+private:
+    std::string::const_iterator m_start;
+    std::string::const_iterator m_end;
+    boost::regex m_expression;
+    boost::match_flag_type m_flags;
+    boost::match_results<std::string::const_iterator> m_match;
+};
+
+enum class TermType {
+    Substring, Regex
+};
+struct SearchType {
+    TermType type;
+    bool caseSensitive;
+
+    static const SearchType SubstringCI;
+    static const SearchType SubstringCS;
+    static const SearchType RegexCI;
+    static const SearchType RegexCS;
 };
 std::optional<Matcher::Match> search(std::string source, std::string query, SearchType type);
 
@@ -79,6 +104,8 @@ struct FullTextSearchQuery {
     std::string term;
     std::filesystem::path file;
     SearchType type;
+
+    void parseAndSetTerm(const std::string& str);
 };
 
 struct FullTextSearchResult {

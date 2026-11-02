@@ -43,6 +43,7 @@ enum class SearchType {
 struct SearchOptions {
     SearchType type;
     std::string term;
+    bool caseSensitive;
     bool plain;
 };
 

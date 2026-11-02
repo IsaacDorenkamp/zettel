@@ -141,7 +141,8 @@ int main(int argc, char **argv) {
 
     argparse::ArgumentParser search_cmd("search");
     search_cmd.add_argument("term").required().help("The term to search against.");
-    search_cmd.add_argument("--type").choices("tag", "title", "text").default_value("tag").help("The field to search against. Can search by tag (exact), title (similar), or (full) text (similar).");
+    search_cmd.add_argument("--type", "-t").choices("tag", "title", "text").default_value("tag").help("The field to search against. Can search by tag (exact), title (similar), or (full) text (similar).");
+    search_cmd.add_argument("--sensitive", "-s").flag().help("When set, the search will be case-sensitive. Otherwise, case is ignored.");
     search_cmd.add_argument("--plain").flag().help("When set, output will not contain ANSI escape codes.");
     search_cmd.add_description("Search for Zettels by tag, title, or text.");
 
@@ -250,6 +251,7 @@ int main(int argc, char **argv) {
         }else if (program.is_subcommand_used("search")) {
             cmd::SearchType type;
             string cmdType = search_cmd.get<string>("--type");
+            bool caseSensitive = search_cmd.get<bool>("--sensitive");
             if (cmdType.compare("tag") == 0) {
                 type = cmd::SearchType::Tag;
             } else if (cmdType.compare("title") == 0) {
@@ -261,6 +263,7 @@ int main(int argc, char **argv) {
             cmd::SearchOptions opts{
                 type,
                 search_cmd.get<string>("term"),
+                caseSensitive,
                 search_cmd.get<bool>("--plain")
             };
             size_t nresults = cmd::search(ctx, opts);

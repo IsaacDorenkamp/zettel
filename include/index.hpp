@@ -57,8 +57,8 @@ public:
 
     std::vector<models::zettel> list();
     std::vector<models::zettel> searchTag(std::string tag);
-    std::vector<models::zettel> searchTitle(std::string title);
-    std::vector<models::zettel> searchFullText(std::string term, const std::filesystem::path& root);
+    std::vector<models::zettel> searchTitle(std::string title, bool caseSensitive);
+    std::vector<models::zettel> searchFullText(std::string term, const std::filesystem::path& root, bool caseSensitive);
     void insert(const Zettel* note);
     void update(const Zettel* note);
     void remove(const Zettel* note);

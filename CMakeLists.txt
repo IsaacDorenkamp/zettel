@@ -71,21 +71,26 @@ set(TEST_SOURCES
     "src/test_uri.cpp"
 )
 
+find_package(Boost CONFIG COMPONENTS regex)
+if (NOT TARGET Boost::regex)
+    message(FATAL_ERROR "Boost::regex not found, ensure Boost is installed and findable")
+endif()
+
 include_directories("include")
 
 if (WIN32)
     add_executable(zettel WIN32 ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   WIN32 ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses)
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses Boost::regex)
     endif()
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses)
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses Boost::regex)
     endif()
     install(TARGETS zettel
         RUNTIME DESTINATION /usr/local/bin)
 endif()
-target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3 ncurses)
+target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3 ncurses Boost::regex)
