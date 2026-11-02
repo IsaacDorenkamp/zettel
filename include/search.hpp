@@ -13,7 +13,13 @@ namespace zettel {
 
 class Matcher {
 public:
+    virtual ~Matcher() = default;
     using Match = std::pair<size_t, std::string>;
+    virtual std::optional<Match> next() = 0;
+};
+
+class SequentialMatcher : public Matcher {
+public:
 
     /*
      * Searching means that the matcher is not currently considering input as possibly contributing
@@ -29,15 +35,17 @@ public:
         Searching, PossibleMatch, FoundMatch, BrokeMatch, EndMatch, Error
     };
 
-    Matcher(std::string source, std::string query);
-    virtual ~Matcher() = default;
+    SequentialMatcher(std::string source, std::string query);
+    virtual ~SequentialMatcher() = default;
     virtual State accept(char c) = 0;
+    virtual State finalize() = 0;
     bool done() const;
-    State next();
+    virtual std::optional<Match> next();
 
     const std::optional<std::string>& error() const;
     std::optional<Match> takeMatch();
 protected:
+    State update();
     State error(const std::string& err);
     std::string m_source;
     std::string m_query;
@@ -50,22 +58,22 @@ private:
     std::optional<Match> m_match;
 };
 
-class TermMatcher : public Matcher {
+class TermMatcher : public SequentialMatcher {
 public:
     TermMatcher(std::string source, std::string query, bool caseSensitive = false);
     virtual ~TermMatcher() = default;
     virtual State accept(char c);
+    virtual State finalize();
 private:
     bool matches(char a, char b) const;
     ssize_t m_queryIndex;
     bool m_caseSensitive;
 };
 
-using SearchResult = std::pair<size_t, std::string>;
 enum class SearchType {
     TermCS, TermCI
 };
-std::pair<size_t, std::string> search(std::string source, std::string query, SearchType type);
+std::optional<Matcher::Match> search(std::string source, std::string query, SearchType type);
 
 struct FullTextSearchQuery {
     std::string term;

@@ -2,14 +2,14 @@
 
 #include <sstream>
 
-using std::optional, std::pair, std::string, std::stringstream, std::variant;
+using std::optional, std::string, std::stringstream, std::variant;
 using zettel::Zettel;
 
 namespace zettel {
 
-Matcher::Matcher(string source, string query) : m_source(source), m_query(query), m_index(0), m_state(State::Searching),
+SequentialMatcher::SequentialMatcher(string source, string query) : m_source(source), m_query(query), m_index(0), m_state(State::Searching),
     m_startedAt(0), m_possibleMatch(), m_error(), m_match() {}
-Matcher::State Matcher::next() {
+SequentialMatcher::State SequentialMatcher::update() {
     char c = m_source[m_index];
     State newState = accept(c);
     switch (newState) {
@@ -38,18 +38,30 @@ Matcher::State Matcher::next() {
     m_index++;
     return newState;
 }
-bool Matcher::done() const {
+bool SequentialMatcher::done() const {
     return m_index >= m_source.size();
 }
-Matcher::State Matcher::error(const string& message) {
+optional<Matcher::Match> SequentialMatcher::next() {
+    State matchState;
+    while (m_index < m_source.size()) {
+        matchState = update();
+        if (matchState == FoundMatch || matchState == EndMatch) return takeMatch();
+    }
+    optional<Matcher::Match> result = std::nullopt;
+    matchState = finalize();
+    if (matchState == FoundMatch || matchState == EndMatch)
+        result = takeMatch();
+    return result;
+}
+SequentialMatcher::State SequentialMatcher::error(const string& message) {
     m_error = message;
     return State::Error;
 }
-optional<Matcher::Match> Matcher::takeMatch() {
+optional<Matcher::Match> SequentialMatcher::takeMatch() {
     return std::move(m_match);
 }
-TermMatcher::TermMatcher(string source, string query, bool caseSensitive) : Matcher(source, query), m_queryIndex(-1), m_caseSensitive(caseSensitive) {}
-Matcher::State TermMatcher::accept(char c) {
+TermMatcher::TermMatcher(string source, string query, bool caseSensitive) : SequentialMatcher(source, query), m_queryIndex(-1), m_caseSensitive(caseSensitive) {}
+SequentialMatcher::State TermMatcher::accept(char c) {
     if (m_query.empty()) return error("Search query may not be empty.");
     if (m_queryIndex >= 0) {
         if (matches(c, m_query[m_queryIndex])) {
@@ -68,6 +80,9 @@ Matcher::State TermMatcher::accept(char c) {
         } else return State::Searching;
     }
 }
+SequentialMatcher::State TermMatcher::finalize() {
+    return State::Searching;
+}
 bool TermMatcher::matches(char a, char b) const {
     if (m_caseSensitive) return a == b;
 
@@ -80,7 +95,7 @@ bool TermMatcher::matches(char a, char b) const {
     }
 }
 
-SearchResult search(string source, string query, SearchType type) {
+optional<Matcher::Match> search(string source, string query, SearchType type) {
     using std::unique_ptr;
     unique_ptr<Matcher> matcher;
     switch (type) {
@@ -89,11 +104,9 @@ SearchResult search(string source, string query, SearchType type) {
     case SearchType::TermCI:
         matcher = unique_ptr<Matcher>(new TermMatcher(source, query, false));
     }
-    while (!matcher->done()) {
-        Matcher::State s = matcher->next();
-        if (s == Matcher::FoundMatch || s == Matcher::EndMatch) return *matcher->takeMatch();
-    }
-    return {string::npos, ""};
+    optional<Matcher::Match> match = matcher->next();
+    if (match) return *match;
+    return std::nullopt;
 }
 
 variant<FullTextSearchResult, string> searchFile(const FullTextSearchQuery& query) {
@@ -105,14 +118,14 @@ variant<FullTextSearchResult, string> searchFile(const FullTextSearchQuery& quer
         stringstream contentss;
         for (const std::unique_ptr<zettel::ContentBlock>& block : z.content()) contentss << block->format(zettel::PLAINTEXT_FORMAT);
         string content(contentss.str());
-        pair<size_t, string> match = search(content, query.term, SearchType::TermCI);
-        if (match.first == string::npos) {
-            return FullTextSearchResult{std::nullopt, ""};
-        } else {
+        optional<Matcher::Match> match = search(content, query.term, SearchType::TermCI);
+        if (match) {
             return FullTextSearchResult{
                 zettel::models::zettel{z.id(), z.title()},
-                match.second
+                match->second
             };
+        } else {
+            return FullTextSearchResult{std::nullopt, ""};
         }
     } catch (const zettel::ZettelException& exc) {
         return exc.what();
