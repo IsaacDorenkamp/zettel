@@ -1,9 +1,16 @@
 #include "sys.hpp"
 
 #include <cstdlib>
+#include <cstring>
+
+#if define(__linux__) || defined(__APPLE__)
+#define UNIX_BASED
+#endif
+
+#ifdef UNIX_BASED
 #include <unistd.h>
-#include <string.h>
 #include <sys/wait.h>
+#endif
 
 #include "format.hpp"
 
@@ -23,7 +30,7 @@ const char* SysException::what() const throw() {
     return "";
 }
 
-#if defined(__linux__) || defined(__APPLE__)
+#ifdef UNIX_BASED
 
 ExitResult runcmd(const string& executable, const vector<string>& args, const map<string, string>& env) {
     pid_t pid = fork();

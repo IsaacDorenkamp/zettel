@@ -32,9 +32,27 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
+if(NOT TARGET SQLite::SQLite3)
+    FetchContent_Declare(
+        sqlite3
+        GIT_REPOSITORY https://github.com/sjinks/sqlite3-cmake.git
+        GIT_TAG v3.49.1
+    )
+
+    FetchContent_MakeAvailable(sqlite3)
+endif()
+
 find_package(SQLite3)
-if(NOT TARGET SQLite3::SQLite3)
-    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+if (Curses_FOUND AND NOT TARGET Curses::Curses)
+    add_library(Curses::Curses INTERFACE IMPORTED)
+    set_target_properties(
+        Curses::Curses
+        PROPERTIES
+            INTERFACE_LINK_LIBRARIES "${CURSES_LIBRARIES}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CURSES_INCLUDE_DIRS}"
+    )
+elseif(NOT Curses_FOUND)
+    message(FATAL_ERROR "Curses was not found and is needed for zettel!")
 endif()
 
 set(COMMON_SOURCES
@@ -75,15 +93,15 @@ if (WIN32)
     add_executable(zettel WIN32 ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   WIN32 ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses)
+        target_link_libraries(test PRIVATE argparse SQLite::SQLite3 Catch2::Catch2WithMain Curses::Curses)
     endif()
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses)
+        target_link_libraries(test PRIVATE argparse SQLite::SQLite3 Catch2::Catch2WithMain Curses::Curses)
     endif()
     install(TARGETS zettel
         RUNTIME DESTINATION /usr/local/bin)
 endif()
-target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3 ncurses)
+target_link_libraries(zettel PRIVATE argparse SQLite::SQLite3 Curses::Curses)

@@ -1,8 +1,6 @@
 #include "editor.hpp"
 
 #include <fstream>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include "format.hpp"
 #include "io.hpp"
