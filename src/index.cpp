@@ -95,12 +95,14 @@ vector<models::zettel> Index::searchFullText(string term, const std::filesystem:
     sys::ThreadSafeQueue<std::variant<FullTextSearchResult, string>> searchResults;
 
     SearchType type;
+    type.caseSensitive = caseSensitive;
+    FullTextSearchQuery q;
     for (const models::zettel& entry : sql::gather(rset)) {
-        queries.put(FullTextSearchQuery{
-            term,
-            root / Zettel::getFilenameForId(entry.id),
-            type
-        });
+        q.file = root / Zettel::getFilenameForId(entry.id);
+        q.type = type;
+        q.term = "";
+        q.parseAndSetTerm(term);
+        queries.put(q);
     }
     queries.shutdown();
 

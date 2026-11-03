@@ -75,7 +75,7 @@ private:
 
 class RegexMatcher : public Matcher {
 public:
-    RegexMatcher(std::string source, std::string query);
+    RegexMatcher(std::string source, std::string query, bool caseSensitive);
     virtual ~RegexMatcher() = default;
     virtual std::optional<Match> next();
 private:

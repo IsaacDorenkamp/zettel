@@ -98,7 +98,8 @@ bool TermMatcher::matches(char a, char b) const {
     }
 }
 
-RegexMatcher::RegexMatcher(string source, string query) : Matcher(source, query), m_start(source.begin()), m_end(source.end()), m_expression(query), m_flags(boost::match_default), m_match() {}
+RegexMatcher::RegexMatcher(string source, string query, bool caseSensitive) : Matcher(source, query), m_start(source.begin()), m_end(source.end()),
+    m_expression(query, boost::regex::basic | (caseSensitive ? 0 : boost::regex::icase)), m_flags(boost::match_default), m_match() {}
 optional<Matcher::Match> RegexMatcher::next() {
     optional<Matcher::Match> result = std::nullopt;
     if (boost::regex_search(m_start, m_end, m_match, m_expression, m_flags)) {
@@ -120,7 +121,7 @@ optional<Matcher::Match> search(string source, string query, SearchType type) {
         matcher = unique_ptr<Matcher>(new TermMatcher(source, query, type.caseSensitive));
         break;
     case TermType::Regex:
-        matcher = unique_ptr<Matcher>(new RegexMatcher(source, query));
+        matcher = unique_ptr<Matcher>(new RegexMatcher(source, query, type.caseSensitive));
         break;
     }
     optional<Matcher::Match> match = matcher->next();
@@ -137,7 +138,7 @@ variant<FullTextSearchResult, string> searchFile(const FullTextSearchQuery& quer
         stringstream contentss;
         for (const std::unique_ptr<zettel::ContentBlock>& block : z.content()) contentss << block->format(zettel::PLAINTEXT_FORMAT);
         string content(contentss.str());
-        optional<Matcher::Match> match = search(content, query.term, {TermType::Substring, false});
+        optional<Matcher::Match> match = search(content, query.term, query.type);
         if (match) {
             return FullTextSearchResult{
                 zettel::models::zettel{z.id(), z.title()},
@@ -153,8 +154,8 @@ variant<FullTextSearchResult, string> searchFile(const FullTextSearchQuery& quer
 
 const SearchType SearchType::SubstringCI{TermType::Substring, false};
 const SearchType SearchType::SubstringCS{TermType::Substring, true};
-const SearchType SearchType::RegexCI{TermType::Substring, false};
-const SearchType SearchType::RegexCS{TermType::Substring, true};
+const SearchType SearchType::RegexCI{TermType::Regex, false};
+const SearchType SearchType::RegexCS{TermType::Regex, true};
 
 void FullTextSearchQuery::parseAndSetTerm(const string& str) {
     std::string_view view(str);
@@ -164,10 +165,12 @@ void FullTextSearchQuery::parseAndSetTerm(const string& str) {
     }
     if (view.front() == '/') {
         // string_view::substr is far faster than string::substr
-        for (char c : view.substr(1)) {
-            // TODO: try to find matching '/'
-        }
+        std::string_view remainder = view.substr(1);
+        if (remainder.size() == 0 || remainder.back() != '/') return;
+        type.type = TermType::Regex;
+        term = remainder.substr(1, remainder.size() - 2);
     } else {
+        type.type = TermType::Substring;
         term = str;
     }
 }
