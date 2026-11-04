@@ -1,6 +1,7 @@
 #include "search.hpp"
 
 #include <boost/regex.hpp>
+#include <iostream>
 #include <sstream>
 
 using std::optional, std::string, std::stringstream, std::variant;
@@ -107,6 +108,7 @@ optional<Matcher::Match> RegexMatcher::next() {
             m_match[0].first - m_source.begin(),
             m_match[0].str()
         };
+        std::cout << "RESULT: " << result->second << std::endl;
         m_start = m_match[0].second;
         m_flags |= boost::match_prev_avail | boost::match_not_bob;
     }
@@ -168,7 +170,7 @@ void FullTextSearchQuery::parseAndSetTerm(const string& str) {
         std::string_view remainder = view.substr(1);
         if (remainder.size() == 0 || remainder.back() != '/') return;
         type.type = TermType::Regex;
-        term = remainder.substr(1, remainder.size() - 2);
+        term = remainder.substr(0, remainder.size() - 1);
     } else {
         type.type = TermType::Substring;
         term = str;
