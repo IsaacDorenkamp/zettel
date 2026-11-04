@@ -1,9 +1,12 @@
 #include "sys.hpp"
 
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 
-#if define(__linux__) || defined(__APPLE__)
+#include "logging.hpp"
+
+#if defined(__linux__) || defined(__APPLE__)
 #define UNIX_BASED
 #endif
 
@@ -32,6 +35,8 @@ const char* SysException::what() const throw() {
         return "Unable to start process.";
     case UnsupportedAction:
         return "Unsupported action - this means the developer left something unfinished!";
+    case SignalHandlerFailure:
+        return "Unable to configure signal handler.";
     }
     return "";
 }
@@ -96,15 +101,23 @@ ExitResult runcmd(const string& executable, const vector<string>& args, const ma
     }
 }
 
-void settermhandler(const function<void(int)>& handler) {
-    static function<void(int)> onterm;
+static function<void(int)> _onterm;
+static void _termwrapper(int code) {
+    if (_onterm) _onterm(code);
+}
 
-    onterm = handler;
-    struct sigaction sa;
-    sa.sa_handler = &onterm.target<void()>();
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGINT, &sa, NULL) == -1) throw cmd::CommandException("Unable to start the viewer.");}
+void settermhandler(const function<void(int)>& handler) {
+    static bool configuredSignal = false;
+    _onterm = handler;
+
+    if (!configuredSignal) {
+        struct sigaction sa;
+        sa.sa_handler = &_termwrapper;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = SA_RESTART;
+        if (sigaction(SIGINT, &sa, NULL) == -1) throw SysException(sys::SignalHandlerFailure);
+        configuredSignal = true;
+    }
 }
 
 #else

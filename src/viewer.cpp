@@ -1,7 +1,6 @@
 #include "viewer.hpp"
 
 #include <curses.h>
-#include <signal.h>
 #include <algorithm>
 #include <stdexcept>
 
@@ -17,16 +16,15 @@
 using std::map, std::pair, std::set, std::string, std::unique_ptr, std::vector;
 using zettel::cmd::Context;
 
-static void cleanExit(int) {
-    endwin();
-    exit(0);
-}
-
 namespace zettel {
 
-Viewer::Viewer(const Zettel* zettel, const Context& ctx) : m_ctx(&ctx), m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
+Viewer::Viewer(const Zettel* zettel, const Context& ctx) : m_running(true), m_ctx(&ctx), m_top(), m_main(), m_bottom(), m_zettel(zettel), m_screen(), m_mainScreen(), m_links(), m_chain(), m_cache(), m_link(-1) {}
 void Viewer::configure() {
-    sys::settermhandler(&cleanExit);
+    try {
+        sys::settermhandler(std::bind(&Viewer::quit, this));
+    } catch (const sys::SysException& exc) {
+        throw cmd::CommandException("Unable to start viewer.");
+    }
 
     m_linkDefault = tui::register_color_pair(COLOR_BLUE, COLOR_BLACK);
     m_linkHover = tui::register_color_pair(COLOR_BLACK, COLOR_BLUE);
@@ -161,10 +159,15 @@ void Viewer::run() {
     drawKeyBinds();
     drawTrail();
 
+    nodelay(stdscr, true);
+
     int ch;
-    bool running = true;
-    while (running) {
+    while (m_running) {
         ch = getch();
+        if (ch == -1) {
+            napms(1);
+            continue;
+        }
         switch (ch) {
         case 'k':
             nextLink();
@@ -340,6 +343,10 @@ void Viewer::drawKeyBinds() {
     wattroff(m_bottom, A_DIM);
     waddstr(m_bottom, "   ^C [quit]");
     wrefresh(m_bottom);
+}
+
+void Viewer::quit() {
+    m_running = false;
 }
 
 }

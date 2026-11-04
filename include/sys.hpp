@@ -12,7 +12,8 @@ namespace sys {
 
 enum SysErrReason {
     StartFailure,
-    UnsupportedAction
+    UnsupportedAction,
+    SignalHandlerFailure
 };
 
 struct ExitResult {

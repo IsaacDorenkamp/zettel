@@ -340,7 +340,7 @@ void view(const Context& ctx, const ViewOptions& options) {
         Zettel z = Zettel::load(ctx.root / fmt("%u.txt", options.id));
         Viewer v(&z, ctx);
         tui::run_curses(std::bind(&Viewer::run, &v));
-    } catch (const zettel::ZettelException& exc) {
+    } catch (const std::exception& exc) {
         throw CommandException(fmt("Could not view Zettel %u: %s", options.id, exc.what()));
     }
 }

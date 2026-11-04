@@ -89,4 +89,11 @@ void render_ansi(WINDOW* win, const ansi::block& block) {
 
 #undef map_color
 
+void _endcurses(const logs::CaptureLogHandler& handler, logs::LogHandler* original) {
+    endwin();
+    logs::popHandler("capture");
+    if (!original) return;
+    for (const logs::LogRecord& record : handler.records()) original->handle(record);
+}
+
 }

@@ -6,6 +6,7 @@
 
 #include "ansi.hpp"
 
+#include "logging.hpp"
 namespace tui {
 
 struct screen {
@@ -34,8 +35,14 @@ struct range {
 int register_color_pair(int fg, int bg);
 void render_ansi(WINDOW* window, const ansi::block& block);
 
+void _endcurses(const logs::CaptureLogHandler& handler, logs::LogHandler* original);
+
 template <class Fn, std::enable_if_t<std::is_invocable<Fn>::value, bool> = true>
 void run_curses(const Fn& app) {
+    std::shared_ptr<logs::LogHandler> out = logs::popHandler("default");
+    std::shared_ptr<logs::CaptureLogHandler> cap = std::make_shared<logs::CaptureLogHandler>();
+    logs::putHandler("capture", cap);
+
     initscr();
     noecho();
     cbreak();
@@ -45,10 +52,11 @@ void run_curses(const Fn& app) {
     try {
         app();
     } catch (const std::exception& exc) {
-        /* ignore any errors */
+        _endcurses(*cap, out.get());
+        throw;
     }
 
-    endwin();
+    _endcurses(*cap, out.get());
 }
 
 }

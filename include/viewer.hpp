@@ -37,6 +37,8 @@ private:
 
     Zettel* getZettel(const Zettel::Id& id);
 
+    bool m_running;
+
     WINDOW* m_top;
     WINDOW* m_main;
     WINDOW* m_bottom;
