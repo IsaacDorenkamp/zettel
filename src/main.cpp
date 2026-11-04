@@ -114,7 +114,8 @@ static const set<Version> BW_COMPATIBLE = {
     Version{0, 0, 2},
     Version{1, 0, 0},
     Version{1, 0, 1},
-    Version{1, 1, 0}
+    Version{1, 1, 0},
+    Version{1, 2, 0}
 };
 
 int main(int argc, char **argv) {
@@ -177,6 +178,16 @@ int main(int argc, char **argv) {
     argparse::ArgumentParser check_cmd("check");
     check_cmd.add_description("Ensure that the database and the file structure are in sync.");
 
+    argparse::ArgumentParser meta_cmd("meta");
+    meta_cmd.add_argument("field").choices("title", "tags").required().help("The field to inspect.");
+    meta_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to inspect.");
+    meta_cmd.add_description("Print a single detail about a Zettel.");
+
+    argparse::ArgumentParser read_cmd("read");
+    read_cmd.add_argument("id").scan<'u', uint32_t>().required().help("The ID of the Zettel to inspect.");
+    read_cmd.add_argument("--format", "-f").choices("plain", "ansi").default_value("plain").help("The format in which to print the Zettel.");
+    read_cmd.add_description("Print the contents of a Zettel.");
+
     program.add_subparser(init_cmd);
     program.add_subparser(new_cmd);
     program.add_subparser(list_cmd);
@@ -185,6 +196,8 @@ int main(int argc, char **argv) {
     program.add_subparser(delete_cmd);
     program.add_subparser(view_cmd);
     program.add_subparser(check_cmd);
+    program.add_subparser(meta_cmd);
+    program.add_subparser(read_cmd);
 
     filesystem::path root = get_root_path();
     std::shared_ptr<sql::SQLite> db = make_shared<sql::SQLite>((root / ".zettel" / "struct.db").c_str());
@@ -308,6 +321,23 @@ int main(int argc, char **argv) {
                 else cout << "Found " << ansi::block(zettel::fmt("%u issue%s", issues, issues > 1 ? "s" : "")).foreground(ansi::Color::RED).bold(true) << '.' << endl;
             }
             if (issues) return EXIT_FAILURE;
+        } else if (program.is_subcommand_used("meta")) {
+            cmd::MetaOptions opts{
+                cmd::MetaType::Title,
+                meta_cmd.get<uint32_t>("id")
+            };
+            string type = meta_cmd.get<string>("field");
+            if (type.compare("tags") == 0)
+                opts.type = cmd::MetaType::Tags;
+            cmd::meta(ctx, opts);
+        } else if (program.is_subcommand_used("read")) {
+            cmd::ReadOptions opts{
+                read_cmd.get<uint32_t>("id"),
+                DisplayMode::ASCII
+            };
+            if (read_cmd.get<string>("--format").compare("ansi") == 0)
+                opts.format = DisplayMode::ANSI;
+            cmd::read(ctx, opts);
         }
         else throw cmd::CommandException("No command specified.");
     } catch (const std::exception& exc) {

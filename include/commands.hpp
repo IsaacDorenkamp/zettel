@@ -6,10 +6,11 @@
 #include <vector>
 
 #include "exception.hpp"
+#include "format.hpp"
 #include "index.hpp"
 #include "zettel.hpp"
 
-#define ZETTEL_VERSION "1.2.0"
+#define ZETTEL_VERSION "1.3.0"
 
 namespace zettel {
 
@@ -72,6 +73,20 @@ struct ListOptions {
     bool plain;
 };
 
+enum class MetaType {
+    Title, Tags
+};
+
+struct MetaOptions {
+    MetaType type;
+    Zettel::Id id;
+};
+
+struct ReadOptions {
+    Zettel::Id id;
+    DisplayMode format;
+};
+
 std::unique_ptr<Zettel> make_new(const Context& ctx, const NewOptions& options);
 size_t search(const Context& ctx, const SearchOptions& options);
 std::unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options);
@@ -79,6 +94,8 @@ void remove(const Context& ctx, const DeleteOptions& options);
 void view(const Context& ctx, const ViewOptions& options);
 void list(const Context& ctx, const ListOptions& options);
 uint32_t check(const Context& ctx);
+void meta(const Context& ctx, const MetaOptions& options);
+void read(const Context& ctx, const ReadOptions& options);
 
 }
 

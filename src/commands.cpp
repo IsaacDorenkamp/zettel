@@ -1,7 +1,6 @@
 #include "commands.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -417,6 +416,24 @@ uint32_t check(const Context& ctx) {
         }
     }
     return issues;
+}
+
+void meta(const Context& ctx, const MetaOptions& options) {
+    Zettel z = Zettel::load(Zettel::getFilenameForId(options.id));
+    switch (options.type) {
+    case MetaType::Title:
+        cout << z.title() << endl;
+        break;
+    case MetaType::Tags:
+        for (const string& tag : z.tags())
+            cout << tag << endl;
+        break;
+    }
+}
+
+void read(const Context& ctx, const ReadOptions& options) {
+    Zettel z = Zettel::load(Zettel::getFilenameForId(options.id));
+    for (const unique_ptr<ContentBlock>& block : z.content()) cout << block->format(FormatOptions(options.format, 0, 0));
 }
 
 }
