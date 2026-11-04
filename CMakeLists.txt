@@ -33,7 +33,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 find_package(SQLite3)
-if(NOT TARGET SQLite::SQLite3)
+if (TARGET SQLite3::SQLite3)
+    message(STATUS "Found SQLite3::SQLite3")
+elseif (TARGET SQLite::SQLite3)
+    message(status "Aliasing SQLite::SQLite3")
+    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+else()
     FetchContent_Declare(
         sqlite3
         GIT_REPOSITORY https://github.com/sjinks/sqlite3-cmake.git
@@ -57,6 +62,7 @@ set(COMMON_SOURCES
     "src/zettel.cpp"
     "src/sql.cpp"
     "src/parser.cpp"
+    "src/search.cpp"
     "src/sys.cpp"
     "src/tui.cpp"
     "src/uri.cpp"
@@ -71,9 +77,15 @@ set(TEST_SOURCES
     "src/test_index.cpp"
     "src/test_sql.cpp"
     "src/test_parser.cpp"
+    "src/test_search.cpp"
     "src/test_tui.cpp"
     "src/test_uri.cpp"
 )
+
+find_package(Boost CONFIG COMPONENTS regex)
+if (NOT TARGET Boost::regex)
+    message(FATAL_ERROR "Boost::regex not found, ensure Boost is installed and findable")
+endif()
 
 include_directories("include")
 
@@ -84,16 +96,16 @@ if (WIN32)
     include_directories(zettel ${PDCURSES_INCLUDE_DIR})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite::SQLite3 ${PDCURSES_LIBRARY} Catch2::Catch2WithMain)
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 ${PDCURSES_LIBRARY} Boost::regex Catch2::Catch2WithMain)
     endif()
-    target_link_libraries(zettel PRIVATE argparse SQLite::SQLite3 ${PDCURSES_LIBRARY})
+    target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3 ${PDCURSES_LIBRARY})
 elseif (UNIX)
     add_executable(zettel ${SOURCES})
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_executable(test   ${TEST_SOURCES})
-        target_link_libraries(test PRIVATE argparse SQLite::SQLite3 Catch2::Catch2WithMain ncurses)
+        target_link_libraries(test PRIVATE argparse SQLite3::SQLite3 Catch2::Catch2WithMain ncurses Boost::regex)
     endif()
-    target_link_libraries(zettel PRIVATE argparse SQLite::SQLite3 ncurses)
+    target_link_libraries(zettel PRIVATE argparse SQLite3::SQLite3 ncurses)
     install(TARGETS zettel
         RUNTIME DESTINATION /usr/local/bin)
 endif()

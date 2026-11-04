@@ -1,5 +1,6 @@
 #include "format.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <sstream>
 
@@ -32,6 +33,12 @@ string wrapString(string str, const FormatOptions& options) {
         lineSize = options.line_size;
     } while (index < str.size());
     return result.str();
+}
+
+string lowercase(const string& str) {
+    string result(str);
+    std::transform(result.begin(), result.end(), result.begin(), [](char c) { return std::tolower(c); });
+    return result;
 }
 
 }

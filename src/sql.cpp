@@ -35,6 +35,7 @@ SQLite::ConnectResult SQLite::connect() {
         m_valid = status == SQLITE_OK;
         if (m_valid) {
             sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+            sqlite3_exec(m_handle, "PRAGMA case_sensitive_like = ON;", NULL, NULL, NULL);
             return SQLite::ConnectResult::Success;
         } else {
             return SQLite::ConnectResult::Failure;
@@ -46,6 +47,7 @@ SQLite::ConnectResult SQLite::connect() {
             m_valid = status == SQLITE_OK;
             if (m_valid) {
                 sqlite3_exec(m_handle, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+                sqlite3_exec(m_handle, "PRAGMA case_sensitive_like = ON;", NULL, NULL, NULL);
                 return SQLite::ConnectResult::Success;
             } else {
                 return SQLite::ConnectResult::Failure;

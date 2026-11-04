@@ -176,7 +176,7 @@ TEST_CASE_METHOD(IndexFixture, "search by tag", "[index]") {
 TEST_CASE_METHOD(IndexFixture, "search by title", "[index]") {
     Zettel z(0, "title", "");
     m_idx->insert(&z);
-    vector<models::zettel> results = m_idx->searchTitle("title");
+    vector<models::zettel> results = m_idx->searchTitle("title", true);
     REQUIRE(results.size() == 1);
 }
 
@@ -189,7 +189,7 @@ TEST_CASE_METHOD(IndexFixture, "search by text", "[index]") {
     z2.save();
     m_idx->insert(&z);
     m_idx->insert(&z2);
-    vector<models::zettel> results = m_idx->searchFullText("zettel", "/tmp");
+    vector<models::zettel> results = m_idx->searchFullText("zettel", "/tmp", true);
     INFO(fmt("result count: %zd", results.size()));
     REQUIRE(results.size() == 1);
     REQUIRE(results[0].id == 0);

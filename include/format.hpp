@@ -35,4 +35,6 @@ std::string fmt( const std::string& format, Args ... args )
 std::string stripWhitespace(std::string other);
 std::string wrapString(std::string str, const FormatOptions& options);
 
+std::string lowercase(const std::string& str);
+
 }

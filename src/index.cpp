@@ -1,6 +1,5 @@
 #include "index.hpp"
 
-#include <fstream>
 #include <memory>
 #include <set>
 #include <string>
@@ -9,44 +8,11 @@
 
 #include "format.hpp"
 #include "logging.hpp"
+#include "search.hpp"
 #include "threading.hpp"
 #include "zettel.hpp"
 
 using std::map, std::optional, std::set, std::string, std::stringstream, std::unique_ptr, std::vector;
-
-struct FullTextSearchQuery {
-    string term;
-    std::filesystem::path file;
-};
-
-struct FullTextSearchResult {
-    optional<zettel::models::zettel> match;
-    string matchText;
-};
-
-static std::variant<FullTextSearchResult, string> checkFile(const FullTextSearchQuery& query) {
-    using std::ifstream;
-    using zettel::Zettel;
-    try {
-        Zettel z = Zettel::load(query.file);
-        // first, get plaintext body of zettel
-        stringstream contentss;
-        for (const std::unique_ptr<zettel::ContentBlock>& block : z.content()) contentss << block->format(zettel::PLAINTEXT_FORMAT);
-        string content(contentss.str());
-        // TODO: This search method is very simplistic and inflexible. In the future, a more advanced and flexible one should be used.
-        size_t matchAt = content.find(query.term);
-        if (matchAt == string::npos) {
-            return FullTextSearchResult{std::nullopt, ""};
-        } else {
-            return FullTextSearchResult{
-                zettel::models::zettel{z.id(), z.title()},
-                query.term
-            };
-        }
-    } catch (const zettel::ZettelException& exc) {
-        return exc.what();
-    }
-}
 
 namespace zettel {
 
@@ -111,31 +77,36 @@ vector<models::zettel> Index::searchTag(string tag) {
     return sql::gather(rset);
 }
 
-vector<models::zettel> Index::searchTitle(string title) {
+vector<models::zettel> Index::searchTitle(string title, bool caseSensitive) {
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>(
-        "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE ?",
-        sql::paramlist{fmt("%%%s%%", title.c_str())}
+        caseSensitive ? "SELECT zettel.id, zettel.title FROM zettel WHERE zettel.title LIKE ?"
+            : "SELECT zettel.id, zettel.title FROM zettel WHERE LOWER(zettel.title) LIKE ?",
+        sql::paramlist{fmt("%%%s%%", caseSensitive ? title.c_str() : lowercase(title).c_str())}
     );
     return sql::gather(rset);
 }
 
-vector<models::zettel> Index::searchFullText(string term, const std::filesystem::path& root) {
+vector<models::zettel> Index::searchFullText(string term, const std::filesystem::path& root, bool caseSensitive) {
     // TODO: Find some way to make this more efficient??
     vector<models::zettel> results;
     sql::SQLite::iterator<models::zettel> rset = m_db->query<models::zettel>("SELECT zettel.id, zettel.title FROM zettel");
     sys::ThreadSafeQueue<FullTextSearchQuery> queries;
     sys::ThreadSafeQueue<std::variant<FullTextSearchResult, string>> searchResults;
 
+    SearchType type;
+    type.caseSensitive = caseSensitive;
+    FullTextSearchQuery q;
     for (const models::zettel& entry : sql::gather(rset)) {
-        queries.put(FullTextSearchQuery{
-            term,
-            root / Zettel::getFilenameForId(entry.id)
-        });
+        q.file = root / Zettel::getFilenameForId(entry.id);
+        q.type = type;
+        q.term = "";
+        q.parseAndSetTerm(term);
+        queries.put(q);
     }
     queries.shutdown();
 
-    sys::ThreadPool<FullTextSearchQuery, std::variant<FullTextSearchResult, string>> pool(queries, searchResults, &checkFile);
+    sys::ThreadPool<FullTextSearchQuery, std::variant<FullTextSearchResult, string>> pool(queries, searchResults, &searchFile);
     pool.execute(4);
 
     searchResults.sink<vector<models::zettel>, models::zettel>(results, [](std::variant<FullTextSearchResult, string> result) -> optional<models::zettel> {
