@@ -1,6 +1,6 @@
 zettel
 ------
-`zettel` is a command-line tool designed to manage a digitial [Zettelkasten](https://zettelkasten.de). It includes functionalities for
+`zettel` is a command-line tool designed to manage a digital [Zettelkasten](https://zettelkasten.de). It includes functionalities for
 creating, editing, searching, and viewing individual Zettels: notes expressing a singular idea.
 
 # Building and Installing
@@ -46,6 +46,10 @@ with the following format:
 It is not recommended to manually modify these files. Modifying the title or tags will bring the file out of sync with the database, which
 may cause confusing behavior. `zettel check` can be used in case a file gets corrupted or deleted to inform you of the ways in which the
 file structure is out of sync with the database. Ideally, just use `zettel` to perform operations in your digital Zettelkasten.
+
+# Using with git
+When a directory has been initialized as a Zettelkasten with `zettel init`, it can also be initialized as a Git repository. This repository
+must not ignore the `.zettel` directory, but the `.zettel` directory does contain a file which may ignored called "INPUT".
 
 # Commands
 
