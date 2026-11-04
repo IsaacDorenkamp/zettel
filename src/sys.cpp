@@ -7,6 +7,10 @@
 #define UNIX_BASED
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef UNIX_BASED
 #include <unistd.h>
 #include <sys/wait.h>
@@ -14,7 +18,7 @@
 
 #include "format.hpp"
 
-using std::map, std::string, std::vector;
+using std::function, std::map, std::string, std::vector;
 using zettel::fmt, zettel::URI;
 
 extern char** environ;
@@ -26,6 +30,8 @@ const char* SysException::what() const throw() {
     switch (m_reason) {
     case StartFailure:
         return "Unable to start process.";
+    case UnsupportedAction:
+        return "Unsupported action - this means the developer left something unfinished!";
     }
     return "";
 }
@@ -90,10 +96,41 @@ ExitResult runcmd(const string& executable, const vector<string>& args, const ma
     }
 }
 
+void settermhandler(const function<void(int)>& handler) {
+    static function<void(int)> onterm;
+
+    onterm = handler;
+    struct sigaction sa;
+    sa.sa_handler = &onterm.target<void()>();
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGINT, &sa, NULL) == -1) throw cmd::CommandException("Unable to start the viewer.");}
+}
+
 #else
 
 ExitResult runcmd(const string& executable, const vector<string>& args, const map<string, string>& env) {
     throw SysException(StartFailure);
+}
+
+static function<void(int)> _onterm;
+
+BOOL WINAPI termwrapper(DWORD type) {
+    if (_onterm) {
+        _onterm(type);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+void settermhandler(const function<void(int)>& handler) {
+    // capture by value to copy
+    static bool addedWrapper = false;
+    _onterm = handler;
+    if (!addedWrapper) {
+        SetConsoleCtrlHandler(&termwrapper, TRUE);
+        addedWrapper = true;
+    }
 }
 
 #endif
@@ -112,8 +149,8 @@ ExitResult open(const URI& uri) {
 
 #else
 
-void open(const URI& uri) {
-    throw SysException("No support for opening URIs");
+ExitResult open(const URI& uri) {
+    throw SysException(SysErrReason::UnsupportedAction);
 }
 
 #endif

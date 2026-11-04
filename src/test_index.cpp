@@ -16,10 +16,10 @@ using namespace zettel;
 class IndexFixture {
 public:
     IndexFixture() : m_db(make_shared<sql::SQLite>(":memory:")), m_ctx({
-            .root = "",
-            .dotdir = "",
-            .db = m_db,
-            .index = make_unique<Index>(m_db)
+            "",
+            "",
+            m_db,
+            make_unique<Index>(m_db)
         }), m_idx(m_ctx.index.get()), m_captureHandler(make_shared<logs::CaptureLogHandler>()) {
         cmd::initialize(m_ctx);
         logs::putHandler("capture", m_captureHandler);

@@ -187,10 +187,10 @@ int main(int argc, char **argv) {
     filesystem::path root = get_root_path();
     std::shared_ptr<sql::SQLite> db = make_shared<sql::SQLite>((root / ".zettel" / "struct.db").c_str());
     cmd::Context ctx{
-        .root = root,
-        .dotdir = root / ".zettel",
-        .db = db,
-        .index = make_unique<Index>(db)
+        root,
+        root / ".zettel",
+        db,
+        make_unique<Index>(db)
     };
 
     try {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ncurses.h>
 #include <map>
+#include <curses.h>
 
 #include "tui.hpp"
 #include "uri.hpp"

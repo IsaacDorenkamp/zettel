@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -10,7 +11,8 @@
 namespace sys {
 
 enum SysErrReason {
-    StartFailure
+    StartFailure,
+    UnsupportedAction
 };
 
 struct ExitResult {
@@ -26,6 +28,7 @@ private:
     SysErrReason m_reason;
 };
 
+void settermhandler(const std::function<void(int)>& handler);
 ExitResult runcmd(const std::string& executable, const std::vector<std::string>& args, const std::map<std::string, std::string>& env);
 ExitResult open(const zettel::URI& uri);
 
