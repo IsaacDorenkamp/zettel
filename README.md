@@ -3,6 +3,24 @@ zettel
 `zettel` is a command-line tool designed to manage a digitial [Zettelkasten](https://zettelkasten.de). It includes functionalities for
 creating, editing, searching, and viewing individual Zettels: notes expressing a singular idea.
 
+# Building and Installing
+
+### Apple and Linux
+Zettel uses the CMake build system. To build, run:
+```
+$ mkdir build && cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake --build .
+```
+
+After building, you can install with
+```
+$ sudo cmake --install .
+```
+
+### Windows
+This section will be written once support for Windows has been implemented.
+
 # Global options
 These options may be passed before specifying the subcommand, for example: `zettel --global-opt new ...`
 
@@ -85,6 +103,14 @@ accidental deletion or modification of Zettel files. `zettel check` will ensure 
 entails ensuring that its file actually exists, that all of its references match, and that its tags match. If there are any issues, these will be
 logged to standard output and the program will exit with a failing status code. If there are no issues, this will be acknowledged and the program
 will exit with a successful status code.
+
+### `zettel meta`
+This simple command is used to extract single details about a Zettel. `zettel meta title` is used to obtain the title, and `zettel meta tags` outputs
+a newline-separated list of the Zettel's tags.
+
+### `zettel read`
+Print the content of the Zettel. By default, this is done with plaintext, but with the `--format ansi` option you can allow for outputting decorated
+text.
 
 # Window Support Pending
 I wrote this program on Apple and Linux devices, and so didn't take the time to add support for Windows. However, Windows support will be added in

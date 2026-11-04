@@ -19,3 +19,9 @@ v1.2.0
 - `zettel search` now supports case-insensitive searches, still allowing for case-sensitive
   searches with the `--sensistive` or `-s` flag.
 - `zettel search` now supports the use of regular expressions in full-text searches
+
+v1.3.0
+------
+- Added `zettel meta` and `zettel read` to improve the ease of connecting `zettel` with other
+  CLI tools.
+- Added "Build and Install" section to README.md
