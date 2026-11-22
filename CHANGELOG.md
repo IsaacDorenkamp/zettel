@@ -25,3 +25,7 @@ v1.3.0
 - Added `zettel meta` and `zettel read` to improve the ease of connecting `zettel` with other
   CLI tools.
 - Added "Build and Install" section to README.md
+
+v1.3.1
+------
+- Added `#include <mutex>` to logging.hpp as its absence caused a fresh build to fail
