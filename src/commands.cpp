@@ -229,7 +229,7 @@ unique_ptr<Zettel> edit(const Context& ctx, const EditOptions& options) {
         if (options.title) z.setTitle(*options.title);
 
         vector<string> diff;
-        set<string> newTags;
+        set<string> newTags(z.tags());
         bool first;
         if (options.strictRemove && !options.removeTags.empty()) {
             // if we've reached here, diff must be empty

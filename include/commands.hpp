@@ -10,7 +10,7 @@
 #include "index.hpp"
 #include "zettel.hpp"
 
-#define ZETTEL_VERSION "1.3.1"
+#define ZETTEL_VERSION "1.3.2"
 
 namespace zettel {
 

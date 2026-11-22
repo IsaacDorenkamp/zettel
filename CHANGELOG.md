@@ -29,3 +29,8 @@ v1.3.0
 v1.3.1
 ------
 - Added `#include <mutex>` to logging.hpp as its absence caused a fresh build to fail
+
+v1.3.2
+------
+- Fixed bug where `zettel edit` strips tags, leaving only those explicitly added by the command.
+- Added "-d" as an alias for "--details-only" on `zettel edit`
